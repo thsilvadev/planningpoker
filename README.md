@@ -91,5 +91,11 @@ planning-poker/
 
  Deploy na Vercel + Render (ou Heroku)
 
+## Kanban
+
+ https://kanbanx.com/#/desafio-fpf-javascript-junior
+
+
+
 🧑‍💻 Autor
 Feito por Thiago Silva – thsilva.developer@gmail.com
