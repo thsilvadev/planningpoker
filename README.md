@@ -97,5 +97,5 @@ planning-poker/
 
 
 
-🧑‍💻 Autor
+## 🧑‍💻 Autor
 Feito por Thiago Silva – thsilva.developer@gmail.com
