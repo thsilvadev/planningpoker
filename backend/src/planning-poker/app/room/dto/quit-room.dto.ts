@@ -1,10 +1,10 @@
 import { IsString, IsNotEmpty } from 'class-validator';
-export class StartRoundDto {
-  @IsString()
-  @IsNotEmpty()
-  roomId: string;
 
+export class QuitRoomDto {
   @IsString()
   @IsNotEmpty()
-  taskId: string;
+  roomId: string; // ID da sala
+  @IsString()
+  @IsNotEmpty()
+  participantId: string; // ID do participante
 }

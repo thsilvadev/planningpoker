@@ -5,8 +5,9 @@ import {
   WebSocketServer,
   OnGatewayDisconnect,
   ConnectedSocket,
+  WsException,
 } from '@nestjs/websockets';
-import { OnModuleInit } from '@nestjs/common';
+import { OnModuleInit, UsePipes, ValidationPipe } from '@nestjs/common';
 import { Server, Socket } from 'socket.io';
 import { CreateRoomDto } from './room/dto/create-room.dto';
 
@@ -18,6 +19,10 @@ import { StartRoundDto } from './task/dto/start-round.dto';
 import { PlanningService } from './planning.service';
 import { RevealVotesDto } from './room/dto/reveal-votes.dto';
 import { SubmitVoteDto } from './participant/dto/submit-vote.dto';
+import { CleanupRoomsService } from '../utils/cleanupRooms.service';
+import { RoomSanitizerService } from '../utils/roomSanitizer.service';
+import { QuitRoomDto } from './room/dto/quit-room.dto';
+import { RemoveRoomDto } from './room/dto/remove-room.dto';
 
 @WebSocketGateway({
   cors: {
@@ -30,32 +35,75 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     private readonly roomService: RoomService,
     private readonly taskService: TaskService,
     private readonly planningService: PlanningService,
+    private readonly cleanupRoomsService: CleanupRoomsService,
+    private readonly roomSanitizerService: RoomSanitizerService,
   ) {}
   @WebSocketServer()
   private server: Server;
 
   onModuleInit() {
     this.server.on('connection', (socketClient) => {
-      console.log(`socketClient connected: ${socketClient.id}`);
+      console.log(
+        `socketClient connected: ${socketClient.id}, handshake:`,
+        socketClient.handshake.query,
+      );
+      // Se o cliente já tem um participantId, ele está reconectando
+      const participantId = socketClient.handshake.query.participantId;
+      const creatorId = socketClient.handshake.query.creatorId;
+      if (!participantId && !creatorId) {
+        // Se não tem participantId nem creatorId, é um novo cliente
+        socketClient.emit('newConnection', {
+          message: 'Welcome to Planning Poker!',
+        });
+      } else {
+        if (participantId) {
+          const room = this.roomService.getRoomByParticipantId(participantId);
+          if (room) {
+            this.planningService.joinSession(socketClient, room.id);
+            socketClient.emit('roomRemoderated', room);
+          }
+        }
+        if (creatorId) {
+          const room = this.roomService.getRoomByCreatorId(creatorId);
+          if (room) {
+            this.planningService.joinSession(socketClient, room.id);
+            socketClient.emit('roomRejoined', room);
+          }
+        }
+      }
+      // Aqui você pode adicionar lógica adicional para lidar com a conexão do cliente, se necessário
+    });
+
+    // Registrar callback de limpeza
+    this.cleanupRoomsService.setCleanupCallback(() => {
+      this.cleanupInactiveRooms();
     });
   }
 
   handleDisconnect(client: Socket) {
     console.log(`socketClient disconnected: ${client.id}`);
-    // Obs: o frontend deve anotar o nome do usuário e o roomId no socketClient no momento em que entra/cria a sala
-    // Se o usuário tem nome, ele está em uma sala (estado).
-    const { name, roomId } = client.handshake.query;
-    if (typeof name === 'string' && typeof roomId === 'string') {
-      //Avisar os demais do usuário desconectado
-      //Remover o usuário da sala (estado)
-      this.server.emit('userDisconnected', name);
-      const room = this.roomService.getRoom(roomId);
-      if (room) {
-        room.participants = room.participants.filter((p) => p.name !== name);
-      }
-    }
+    // // Obs: o frontend deve anotar o nome do usuário e o roomId no socketClient no momento em que entra/cria a sala
+    // // Se o usuário tem nome, ele está em uma sala (estado).
+    // const { name, roomId } = client.handshake.query;
+    // if (typeof name === 'string' && typeof roomId === 'string') {
+    //   //Avisar os demais do usuário desconectado
+    //   //Remover o usuário da sala (estado)
+    //   this.server.emit('userDisconnected', name);
+    //   const room = this.roomService.getRoom(roomId);
+    //   if (room) {
+    //     room.participants = room.participants.filter((p) => p.name !== name);
+    //   }
+    // }
   }
 
+  //Depois de muita pesquisa eu consegui fazer as validações de interface (DTO) funcionarem com o WebSocketGateway.
+  //Aparentemente, o ValidationPipe não funciona diretamente no WebSocketGateway (mesmo lá no main.ts estar o .useGlobalPipes()), então eu
+  //usei o UsePipes() decorator para aplicar o ValidationPipe em cada método de manipulação de mensagem.
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
   @SubscribeMessage('createRoom')
   handleCreateRoom(
     @MessageBody() createRoomDto: CreateRoomDto,
@@ -63,13 +111,15 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
   ): void {
     const { name } = createRoomDto;
 
-    const newRoom = this.roomService.createRoom(name);
+    const newRoom = this.roomService.createRoom(name, client.id);
     if (newRoom) {
-      console.log(`Room created: ${newRoom.id} by ${name}`);
       //Cria uma sala Socket.IO (chamarei de Session) com o ID da sala
       //Envia a sala recém-criada para o cliente que a criou
       this.planningService.joinSession(client, newRoom.id);
-      this.server.to(client.id).emit('moderateRoom', newRoom);
+      client.emit('moderateRoom', newRoom);
+      console.log(
+        `Room created: ${newRoom.id} by ${name}, socketId: ${client.id}`,
+      );
     } else {
       // Envia uma mensagem de erro para o cliente
       console.error(`Failed to create room for moderator ${name}`);
@@ -77,27 +127,52 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     }
   }
 
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
   @SubscribeMessage('joinRoom')
   handleJoinRoom(
     @MessageBody() joinRoomDto: JoinRoomDto,
     @ConnectedSocket() client: Socket,
   ): void {
     const { roomId, name } = joinRoomDto;
-    //newRoomState aqui é basicamente o estado da sala, que deve ser devolvido e atualizado no frontend.
-    const newRoomState = this.roomService.addParticipant(roomId, name);
-
-    if (newRoomState) {
-      console.log(`Participant ${name} joined room ${roomId}`);
-      //Entra numa session com o ID da sala
+    const result = this.roomService.addParticipant(roomId, name);
+    if (!result) {
+      console.error(
+        `Failed to join room ${roomId} for participant ${name}, socket ID: ${client.id}`,
+      );
+      client.emit('error', 'Failed to join room');
+      return;
+    }
+    const { newRoomState, participantId } = result;
+    //Entra numa session com o ID da sala
+    const joinedSession: boolean = this.planningService.joinSession(
+      client,
+      roomId,
+    );
+    if (newRoomState && joinedSession) {
       //Envia a sala(estado) atualizada para todos os participantes da sala
-      this.planningService.joinSession(client, roomId);
-      this.server.to(roomId).emit('enterRoom', newRoomState);
+      this.server.to(roomId).emit(
+        'enterRoom',
+        this.roomSanitizerService.sanitizeRoom(newRoomState), // Sanitiza a sala (remove os IDs do moderador e participantes) antes de enviar
+      );
+      client.emit('roomJoined', { participantId });
+      console.log(`Participant ${name} joined room ${roomId}`);
     } else {
-      console.error(`Failed to join room ${roomId} for participant ${name}`);
+      console.error(
+        `Failed to join room ${roomId} for participant ${name}, socket ID: ${client.id}`,
+      );
       client.emit('error', 'Failed to join room');
     }
   }
 
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
   @SubscribeMessage('createTask')
   handleCreateTask(
     @MessageBody() createTaskDto: CreateTaskDto,
@@ -106,16 +181,27 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     const { title, description, roomId } = createTaskDto;
     const newTask = this.taskService.createTask(title, description);
     const newRoomState = this.roomService.getRoom(roomId);
-    if (newRoomState) {
+    if (newRoomState && newTask && newRoomState.creatorId === client.id) {
       newRoomState.tasks.push(newTask);
+
+      this.server
+        .to(roomId)
+        .emit(
+          `taskCreated`,
+          this.roomSanitizerService.sanitizeRoom(newRoomState),
+        );
       console.log(`Task '${title}' created in room ${roomId}`);
-      this.server.to(roomId).emit(`taskCreated`, newRoomState);
     } else {
       console.error(`Failed to create task in room ${roomId}`);
       client.emit('error', 'Failed to create task');
     }
   }
 
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
   @SubscribeMessage('startRound')
   handleStartRound(
     @MessageBody() startRoundDto: StartRoundDto,
@@ -123,16 +209,34 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
   ): void {
     const { roomId, taskId } = startRoundDto;
     const newRoomState = this.roomService.getRoom(roomId);
-    if (newRoomState) {
-      newRoomState.currentTaskId = taskId;
+    if (
+      newRoomState &&
+      newRoomState.creatorId === client.id &&
+      newRoomState.tasks.some((t) => t.id === taskId)
+    ) {
+      newRoomState.votingStatus = { status: 'voting', taskId };
+      newRoomState.participants.forEach((p) => {
+        p.hasVoted = false; // Resetar hasVoted para false
+      });
+
+      this.server
+        .to(roomId)
+        .emit(
+          `votingStart`,
+          this.roomSanitizerService.sanitizeRoom(newRoomState),
+        );
       console.log(`Task '${taskId}' to be voted in room ${roomId}`);
-      this.server.to(roomId).emit(`votingStart`, newRoomState);
     } else {
       console.error(`Failed to start round in room ${roomId}`);
       client.emit('error', 'Failed to start round');
     }
   }
 
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
   @SubscribeMessage('revealVotes')
   handleRevealVotes(
     @MessageBody() revealVotesDto: RevealVotesDto,
@@ -140,16 +244,34 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
   ): void {
     const { roomId } = revealVotesDto;
     const newRoomState = this.roomService.getRoom(roomId);
-    if (newRoomState) {
-      newRoomState.votesRevealed = true;
+    if (
+      newRoomState &&
+      newRoomState.votingStatus.status === 'voting' &&
+      client.id === newRoomState.creatorId
+    ) {
+      newRoomState.votingStatus = {
+        status: 'revealed',
+        taskId: newRoomState.votingStatus.taskId,
+      };
+
+      this.server
+        .to(roomId)
+        .emit(
+          'votesRevealed',
+          this.roomSanitizerService.sanitizeRoom(newRoomState),
+        );
       console.log(`Votes revealed in room ${roomId}`);
-      this.server.to(roomId).emit('votesRevealed', newRoomState);
     } else {
       console.error(`Failed to reveal votes in room ${roomId}`);
       client.emit('error', 'Failed to reveal votes');
     }
   }
 
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
   @SubscribeMessage('submitVote')
   handleSubmitVote(
     @MessageBody()
@@ -158,23 +280,123 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
   ): void {
     const { roomId, participantId, vote } = submitVoteDto;
     const newRoomState = this.roomService.getRoom(roomId);
-    if (newRoomState) {
+
+    if (newRoomState && newRoomState.votingStatus.status === 'voting') {
+      const newVotingStatus = newRoomState.votingStatus;
       const currentTask = newRoomState.tasks.find(
-        (t) => t.id === newRoomState.currentTaskId,
+        (t) => t.id === newVotingStatus.taskId,
       );
-      if (currentTask) {
+      const participant = newRoomState.participants.find(
+        (p) => p.id === participantId && !p.hasVoted,
+      );
+
+      if (currentTask && participant) {
+        // Salvar o voto na task
         currentTask.votes[participantId] = vote;
+
+        // Marcar que o participante votou
+        participant.hasVoted = true;
+
+        this.server
+          .to(roomId)
+          .emit(
+            'voteSubmitted',
+            this.roomSanitizerService.sanitizeRoom(newRoomState),
+          );
         console.log(
           `Vote submitted by ${participantId} for task ${currentTask.id} in room ${roomId}`,
         );
-        this.server.to(roomId).emit('voteSubmitted', newRoomState);
       } else {
-        console.error(`Task not found in room ${roomId}`);
-        client.emit('error', 'Task not found');
+        console.error(
+          `Task not found in room ${roomId} or participant has already voted`,
+        );
+        client.emit('error', 'Task not found or you have already voted');
       }
     } else {
       console.error(`Failed to submit vote in room ${roomId}`);
       client.emit('error', 'Failed to submit vote');
+    }
+  }
+
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
+  @SubscribeMessage('quitRoom')
+  handleQuitRoom(
+    @MessageBody() quitRoomDto: QuitRoomDto,
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const { roomId, participantId } = quitRoomDto;
+    let room = this.roomService.getRoom(roomId);
+    if (room) {
+      void client.leave(roomId);
+      room = this.roomService.removeParticipant(roomId, participantId);
+      if (room) {
+        this.server
+          .to(roomId)
+          .emit(
+            'participantLeft',
+            this.roomSanitizerService.sanitizeRoom(room),
+          );
+        console.log(`Participant ${participantId} left room ${roomId}`);
+      } else {
+        console.error(`Failed to quit room ${roomId}`);
+        client.emit('error', 'Failed to quit room');
+      }
+    } else {
+      console.error(`Failed to quit room ${roomId}`);
+      client.emit('error', 'Failed to quit room');
+    }
+  }
+
+  @UsePipes(
+    new ValidationPipe({
+      exceptionFactory: (errors) => new WsException(errors),
+    }),
+  )
+  @SubscribeMessage('removeRoom')
+  handleRemoveRoom(
+    @MessageBody() removeRoomDto: RemoveRoomDto,
+    @ConnectedSocket() client: Socket,
+  ): void {
+    const { roomId, creatorId } = removeRoomDto;
+    const room = this.roomService.getRoom(roomId);
+    if (room && creatorId === room.creatorId) {
+      this.roomService.removeRoom(roomId);
+      void this.planningService.removeSession(roomId, this.server);
+      this.server.to(roomId).emit('roomRemoved', { roomId });
+      console.log(`Room ${roomId} removed`);
+    } else {
+      console.error(`Failed to remove room ${roomId}`);
+      client.emit('error', 'Failed to remove room');
+    }
+  }
+
+  /// EXTRA: Método para limpar salas inativas
+
+  private cleanupInactiveRooms(): void {
+    // 1. Pegar todas as salas
+    const allRooms = this.roomService.getAllRooms();
+
+    // 2. Identificar salas inativas
+    const roomsToRemove =
+      this.cleanupRoomsService.cleanupInactiveRooms(allRooms);
+
+    // 3. Para cada sala inativa, remover do RoomService e do Socket
+    roomsToRemove.forEach((roomId) => {
+      // Remover do socket (Sessão)
+      void this.planningService.removeSession(roomId, this.server);
+
+      // Remover do RoomService
+      this.roomService.removeRoom(roomId);
+
+      console.log(`Inactive room ${roomId} has been cleaned up`);
+    });
+
+    if (roomsToRemove.length > 0) {
+      console.log(`Cleaned up ${roomsToRemove.length} inactive rooms`);
     }
   }
 }
