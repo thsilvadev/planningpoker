@@ -1,307 +1,151 @@
-import { Injectable } from '@angular/core';
-import { io, Socket } from 'socket.io-client';
-import { Observable, BehaviorSubject } from 'rxjs';
-import { Room, Participant, Task, Round, Vote, CreateRoomRequest, JoinRoomRequest, CreateTaskRequest, SubmitVoteRequest } from '../models/room.models';
-
-// Mock data for testing
-const MOCK_ROOM: Room = {
-  id: '1',
-  name: 'Sala de Teste - Planning Poker',
-  participants: [
-    {
-      id: 'user-1',
-      name: 'João (Moderador)',
-      isOnline: true,
-      isModerator: true
-    },
-    {
-      id: 'user-2',
-      name: 'Maria',
-      isOnline: true,
-      isModerator: false
-    },
-    {
-      id: 'user-3',
-      name: 'Pedro',
-      isOnline: true,
-      isModerator: false
-    },
-    {
-      id: 'user-4',
-      name: 'Ana',
-      isOnline: false,
-      isModerator: false
-    }
-  ],
-  currentTask: {
-    id: 'task-1',
-    title: 'Implementar sistema de login',
-    description: 'Criar tela de login com validação de email/senha e integração com backend',
-    createdAt: new Date()
-  },
-  createdBy: 'user-1'
-};
+import { Injectable } from "@angular/core";
+import { io, Socket } from "socket.io-client";
+import { Observable, BehaviorSubject } from "rxjs";
+import { Room, Participant, Task, Vote } from "../models/room.models";
+import {
+  CreateRoomRequest,
+  JoinRoomRequest,
+  CreateTaskRequest,
+  SubmitVoteRequest,
+  RevealVotesRequest,
+  QuitRoomRequest,
+  RemoveRoomRequest,
+  StartRoundRequest,
+} from "../models/request.models";
 
 @Injectable({
-  providedIn: 'root'
+  providedIn: "root",
 })
 export class SocketService {
   private socket: Socket;
+  // Subject da sala para manter o estado da sala atual
+  // e emitir atualizações para os componentes interessados
   private roomSubject = new BehaviorSubject<Room | null>(null);
+  // Subjects para manter o estado da conexão e erros
   private connectedSubject = new BehaviorSubject<boolean>(false);
   private errorSubject = new BehaviorSubject<string | null>(null);
-  private currentUserId: string | null = null;
+
+  // Variáveis para armazenar o ID do usuário atual
+  public participantId: string | null = null;
+  public creatorId: string | null = null;
 
   public room$ = this.roomSubject.asObservable();
   public connected$ = this.connectedSubject.asObservable();
   public error$ = this.errorSubject.asObservable();
 
   constructor() {
-    this.socket = io('http://localhost:3000');
-    // Comment out real socket for mock
-    // this.setupSocketListeners();
-    
-    // Simulate connection for mock
-    setTimeout(() => {
-      this.connectedSubject.next(true);
-    }, 100);
+    // Recupera o ID do criador e do participante do localStorage
+    this.creatorId = localStorage.getItem("creatorId");
+    this.participantId = localStorage.getItem("participantId");
+    this.socket = io(`http://localhost:3000/?creatorId=${this.creatorId}&participantId=${this.participantId}`);
+
+    this.setupSocketListeners();
   }
 
+  // LISTENERS PARA ATUALIZAÇÕES DO SERVIDOR
+
+  // Configura os listeners do socket para receber eventos do servidor
+  // e atualizar os Subjects correspondentes
+
   private setupSocketListeners(): void {
-    this.socket.on('connect', () => {
+    this.socket.on("connect", () => {
       this.connectedSubject.next(true);
       this.errorSubject.next(null);
     });
 
-    this.socket.on('disconnect', () => {
+    this.socket.on("disconnect", () => {
       this.connectedSubject.next(false);
     });
 
-    this.socket.on('room-updated', (room: Room) => {
-      this.roomSubject.next(room);
-    });
-
-    this.socket.on('error', (error: string) => {
+    this.socket.on("error", (error: string) => {
       this.errorSubject.next(error);
     });
 
-    this.socket.on('room-created', (room: Room) => {
+    this.socket.on("moderateRoom", (room: Room) => {
+      this.roomSubject.next(room);
+      // Atualiza o ID do criador e armazena no localStorage
+      this.creatorId = room.creatorId;
+      localStorage.setItem("creatorId", room.creatorId);
+    });
+
+    this.socket.on("roomRemoderated", (room: Room) => {
       this.roomSubject.next(room);
     });
 
-    this.socket.on('joined-room', (room: Room) => {
+    this.socket.on("roomJoined", (participantId: string) => {
+      // Atualiza o ID do participante e armazena no localStorage
+      this.participantId = participantId;
+      localStorage.setItem("participantId", participantId);
+    });
+
+    this.socket.on("roomRejoined", (room: Room) => {
       this.roomSubject.next(room);
     });
 
-    this.socket.on('task-created', (task: Task) => {
-      const currentRoom = this.roomSubject.value;
-      if (currentRoom) {
-        this.roomSubject.next({ ...currentRoom, currentTask: task });
-      }
+    this.socket.on("enterRoom", (room: Room) => {
+      this.roomSubject.next(room);
     });
 
-    this.socket.on('round-started', (round: Round) => {
-      const currentRoom = this.roomSubject.value;
-      if (currentRoom) {
-        this.roomSubject.next({ ...currentRoom, currentRound: round });
-      }
+    this.socket.on("taskCreated", (room: Room) => {
+      this.roomSubject.next(room);
     });
 
-    this.socket.on('vote-submitted', (vote: Vote) => {
-      const currentRoom = this.roomSubject.value;
-      if (currentRoom && currentRoom.currentRound) {
-        const updatedVotes = [...currentRoom.currentRound.votes, vote];
-        const updatedRound = { ...currentRoom.currentRound, votes: updatedVotes };
-        this.roomSubject.next({ ...currentRoom, currentRound: updatedRound });
-      }
+    this.socket.on("votingStart", (room: Room) => {
+      this.roomSubject.next(room);
     });
 
-    this.socket.on('votes-revealed', (round: Round) => {
-      const currentRoom = this.roomSubject.value;
-      if (currentRoom) {
-        this.roomSubject.next({ ...currentRoom, currentRound: round });
-      }
+    this.socket.on("voteSubmitted", (room: Room) => {
+      this.roomSubject.next(room);
+    });
+
+    this.socket.on("votesRevealed", (room: Room) => {
+      this.roomSubject.next(room);
+    });
+
+    this.socket.on("roomRemoved", (response: string) => {
+      this.roomSubject.next(null);
+      console.log(response);
+    });
+
+    this.socket.on("exitedRoom", (response: string) => {
+      this.roomSubject.next(null);
+      console.log(response);
     });
   }
 
+  // FUNÇÕES PARA EMITIR EVENTOS PARA O SERVIDOR
+  // Essas funções emitem eventos para o servidor com os dados necessários
+  // para criar, entrar, sair ou modificar salas e tarefas.
+
   createRoom(request: CreateRoomRequest): void {
-    // Mock room creation
-    this.currentUserId = 'user-1';
-    const mockRoom = {
-      ...MOCK_ROOM,
-      participants: [
-        {
-          id: 'user-1',
-          name: request.moderatorName,
-          isOnline: true,
-          isModerator: true
-        }
-      ]
-    };
-    
-    setTimeout(() => {
-      this.roomSubject.next(mockRoom);
-    }, 500);
+    this.socket.emit("createRoom", request);
+  }
+
+  removeRoom(request: RemoveRoomRequest): void {
+    this.socket.emit("removeRoom", request);
   }
 
   joinRoom(request: JoinRoomRequest): void {
-    // Mock joining room
-    if (request.roomId === '1' || request.roomId.toLowerCase() === 'teste') {
-      this.currentUserId = 'user-2';
-      const mockRoom = {
-        ...MOCK_ROOM,
-        participants: [
-          ...MOCK_ROOM.participants.slice(0, 1), // Keep moderator
-          {
-            id: 'user-2',
-            name: request.participantName,
-            isOnline: true,
-            isModerator: false
-          },
-          ...MOCK_ROOM.participants.slice(2) // Keep other participants
-        ]
-      };
-      
-      setTimeout(() => {
-        this.roomSubject.next(mockRoom);
-      }, 500);
-    } else {
-      setTimeout(() => {
-        this.errorSubject.next('Sala não encontrada');
-      }, 500);
-    }
+    this.socket.emit("joinRoom", request);
   }
 
-  leaveRoom(): void {
-    this.currentUserId = null;
-    this.roomSubject.next(null);
+  leaveRoom(request: QuitRoomRequest): void {
+    this.socket.emit("quitRoom", request);
   }
 
   createTask(request: CreateTaskRequest): void {
-    const currentRoom = this.roomSubject.value;
-    if (currentRoom) {
-      const newTask: Task = {
-        id: 'task-' + Date.now(),
-        title: request.title,
-        description: request.description,
-        createdAt: new Date()
-      };
-      
-      setTimeout(() => {
-        this.roomSubject.next({ 
-          ...currentRoom, 
-          currentTask: newTask,
-          currentRound: undefined 
-        });
-      }, 300);
-    }
+    this.socket.emit("createTask", request)
   }
 
-  startRound(): void {
-    const currentRoom = this.roomSubject.value;
-    if (currentRoom && currentRoom.currentTask) {
-      const newRound: Round = {
-        id: 'round-' + Date.now(),
-        taskId: currentRoom.currentTask.id,
-        votes: [],
-        isActive: true,
-        isRevealed: false,
-        startedAt: new Date()
-      };
-      
-      setTimeout(() => {
-        this.roomSubject.next({ 
-          ...currentRoom, 
-          currentRound: newRound 
-        });
-      }, 300);
-    }
+  startRound(request: StartRoundRequest): void {
+    this.socket.emit("startRound", request)
   }
 
   submitVote(request: SubmitVoteRequest): void {
-    const currentRoom = this.roomSubject.value;
-    if (currentRoom && currentRoom.currentRound && this.currentUserId) {
-      const currentUser = currentRoom.participants.find(p => p.id === this.currentUserId);
-      if (currentUser) {
-        const newVote: Vote = {
-          participantId: this.currentUserId,
-          participantName: currentUser.name,
-          value: request.value,
-          submittedAt: new Date()
-        };
-        
-        const updatedVotes = [
-          ...currentRoom.currentRound.votes.filter(v => v.participantId !== this.currentUserId),
-          newVote
-        ];
-        
-        setTimeout(() => {
-          this.roomSubject.next({
-            ...currentRoom,
-            currentRound: {
-              ...currentRoom.currentRound!,
-              votes: updatedVotes
-            }
-          });
-        }, 300);
-      }
-    }
+    this.socket.emit("submitVote", request)
   }
 
-  revealVotes(): void {
-    const currentRoom = this.roomSubject.value;
-    if (currentRoom && currentRoom.currentRound) {
-      // Add some mock votes if there aren't enough
-      const mockVotes: Vote[] = [
-        {
-          participantId: 'user-1',
-          participantName: 'João (Moderador)',
-          value: '5',
-          submittedAt: new Date()
-        },
-        {
-          participantId: 'user-2',
-          participantName: currentRoom.participants.find(p => p.id === 'user-2')?.name || 'Maria',
-          value: '8',
-          submittedAt: new Date()
-        },
-        {
-          participantId: 'user-3',
-          participantName: 'Pedro',
-          value: '5',
-          submittedAt: new Date()
-        }
-      ];
-      
-      setTimeout(() => {
-        this.roomSubject.next({
-          ...currentRoom,
-          currentRound: {
-            ...currentRoom.currentRound!,
-            votes: mockVotes,
-            isRevealed: true,
-            endedAt: new Date()
-          }
-        });
-      }, 500);
-    }
-  }
-
-  startNewRound(): void {
-    const currentRoom = this.roomSubject.value;
-    if (currentRoom) {
-      setTimeout(() => {
-        this.roomSubject.next({
-          ...currentRoom,
-          currentRound: undefined
-        });
-      }, 300);
-    }
-  }
-
-  disconnect(): void {
-    // Mock disconnect
-    this.connectedSubject.next(false);
-    this.roomSubject.next(null);
+  revealVotes(request: RevealVotesRequest): void {
+    this.socket.emit("revealVotes", request);
   }
 }

@@ -340,6 +340,7 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
             'participantLeft',
             this.roomSanitizerService.sanitizeRoom(room),
           );
+        client.emit('exitedRoom', `You exited the room ${roomId}`);
         console.log(`Participant ${participantId} left room ${roomId}`);
       } else {
         console.error(`Failed to quit room ${roomId}`);
@@ -365,8 +366,8 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     const room = this.roomService.getRoom(roomId);
     if (room && creatorId === room.creatorId) {
       this.roomService.removeRoom(roomId);
+      this.server.to(roomId).emit('roomRemoved', `You removed room ${roomId}`);
       void this.planningService.removeSession(roomId, this.server);
-      this.server.to(roomId).emit('roomRemoved', { roomId });
       console.log(`Room ${roomId} removed`);
     } else {
       console.error(`Failed to remove room ${roomId}`);
