@@ -1,4 +1,5 @@
 import { IsString, IsNotEmpty } from 'class-validator';
+import { Vote } from '../../task/interfaces/task.interface';
 export class SubmitVoteDto {
   @IsString()
   @IsNotEmpty()
@@ -10,5 +11,5 @@ export class SubmitVoteDto {
 
   @IsString()
   @IsNotEmpty()
-  vote: string;
+  vote: Vote;
 }
