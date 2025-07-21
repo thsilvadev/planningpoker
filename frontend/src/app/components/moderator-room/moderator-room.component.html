@@ -1,0 +1,130 @@
+<div class="moderator-room-container" *ngIf="room">
+  <!-- Sidebar - Participants (15% width) -->
+  <aside class="participants-sidebar">
+    <h3>Participantes ({{ room.participants.length }})</h3>
+    <div class="participants-list">
+      <div 
+        *ngFor="let participant of room.participants" 
+        class="participant-item"
+        [class.moderator]="participant.isModerator"
+        [class.offline]="!participant.isOnline"
+      >
+        <div class="participant-info">
+          <span class="participant-name">{{ participant.name }}</span>
+          <span class="participant-role" *ngIf="participant.isModerator">Moderador</span>
+        </div>
+        <div class="participant-status">
+          <span class="status-indicator" [class.online]="participant.isOnline"></span>
+          <span *ngIf="room.currentRound && !room.currentRound.isRevealed" class="vote-status">
+            {{ hasVoted(participant.id) ? '✓' : '⏳' }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content (85% width) -->
+  <main class="main-content">
+    <!-- Top Section - Current Task (15% height) -->
+    <section class="current-task-section">
+      <div class="task-header">
+        <h2 *ngIf="room.currentTask">{{ room.currentTask.title }}</h2>
+        <h2 *ngIf="!room.currentTask" class="no-task">Nenhuma tarefa selecionada</h2>
+      </div>
+      <div class="task-actions">
+        <button 
+          class="btn btn-finish-voting" 
+          [disabled]="!voting"
+          (click)="revealVotes()"
+        >
+          Finalizar Votação
+        </button>
+      </div>
+    </section>
+
+    <!-- Middle Section - Task Queue (45% height) -->
+    <section class="task-queue-section">
+      <h3>Fila de Tarefas</h3>
+      <div class="task-queue-container">
+        <div class="task-cards-row">
+          <!-- Add Task Card -->
+          <div class="task-card add-task-card" (click)="openAddTaskModal()">
+            <div class="add-icon">+</div>
+          </div>
+          
+          <!-- Task Cards -->
+          <div 
+            *ngFor="let task of taskQueue" 
+            class="task-card"
+            [class.current]="room.currentTask?.id === task.id"
+          >
+            <div class="task-card-title">{{ task.title }}</div>
+            <button 
+              class="send-task-btn" 
+              [disabled]="voting"
+              (click)="sendTaskToVoting(task)"
+            >
+              <span class="upload-icon">↑</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bottom Section - Completed Votes (40% height) -->
+    <section class="completed-votes-section">
+      <h3>Votações Finalizadas</h3>
+      <div class="completed-votes-container">
+        <div 
+          *ngFor="let completedTask of completedTasks" 
+          class="mini-card"
+        >
+          <span class="mini-card-title">{{ getTruncatedTitle(completedTask.title) }}</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Task Modal -->
+  <div class="modal-overlay" *ngIf="showAddTaskModal" (click)="closeAddTaskModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <h3>Adicionar Nova Tarefa</h3>
+      <form (ngSubmit)="createTask()" class="task-form">
+        <div class="form-group">
+          <label>Título da Tarefa</label>
+          <input 
+            type="text" 
+            [(ngModel)]="taskTitle" 
+            name="taskTitle"
+            placeholder="Ex: Implementar login de usuário"
+            required
+            maxlength="200"
+          />
+        </div>
+        <div class="form-group">
+          <label>Descrição</label>
+          <textarea 
+            [(ngModel)]="taskDescription" 
+            name="taskDescription"
+            placeholder="Descreva os detalhes da tarefa..."
+            rows="3"
+            maxlength="1000"
+          ></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="button" class="btn btn-secondary" (click)="closeAddTaskModal()">
+            Cancelar
+          </button>
+          <button type="submit" class="btn btn-primary" [disabled]="!taskTitle.trim()">
+            Criar Tarefa
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="loading" *ngIf="!room">
+  <div class="spinner"></div>
+  <p>Carregando sala...</p>
+</div>
