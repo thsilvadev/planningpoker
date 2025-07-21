@@ -178,10 +178,10 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     @MessageBody() createTaskDto: CreateTaskDto,
     @ConnectedSocket() client: Socket,
   ): void {
-    const { title, description, roomId } = createTaskDto;
+    const { title, description, roomId, creatorId } = createTaskDto;
     const newTask = this.taskService.createTask(title, description);
     const newRoomState = this.roomService.getRoom(roomId);
-    if (newRoomState && newTask && newRoomState.creatorId === client.id) {
+    if (newRoomState && newTask && newRoomState.creatorId === creatorId) {
       newRoomState.tasks.push(newTask);
 
       this.server
@@ -207,11 +207,11 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     @MessageBody() startRoundDto: StartRoundDto,
     @ConnectedSocket() client: Socket,
   ): void {
-    const { roomId, taskId } = startRoundDto;
+    const { roomId, taskId, creatorId } = startRoundDto;
     const newRoomState = this.roomService.getRoom(roomId);
     if (
       newRoomState &&
-      newRoomState.creatorId === client.id &&
+      newRoomState.creatorId === creatorId &&
       newRoomState.tasks.some((t) => t.id === taskId)
     ) {
       newRoomState.votingStatus = { status: 'voting', taskId };
@@ -242,12 +242,12 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     @MessageBody() revealVotesDto: RevealVotesDto,
     @ConnectedSocket() client: Socket,
   ): void {
-    const { roomId } = revealVotesDto;
+    const { roomId, creatorId } = revealVotesDto;
     const newRoomState = this.roomService.getRoom(roomId);
     if (
       newRoomState &&
       newRoomState.votingStatus.status === 'voting' &&
-      client.id === newRoomState.creatorId
+      newRoomState.creatorId === creatorId
     ) {
       newRoomState.votingStatus = {
         status: 'revealed',

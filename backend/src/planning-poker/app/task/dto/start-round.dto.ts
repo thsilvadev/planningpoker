@@ -7,4 +7,8 @@ export class StartRoundDto {
   @IsString()
   @IsNotEmpty()
   taskId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  creatorId: string;
 }
