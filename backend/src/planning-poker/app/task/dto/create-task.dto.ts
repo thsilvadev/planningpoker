@@ -11,7 +11,7 @@ export class CreateTaskDto {
 
   @IsString()
   @IsNotEmpty()
-  createdBy: string;
+  creatorId: string;
 
   @IsString()
   @IsNotEmpty()
