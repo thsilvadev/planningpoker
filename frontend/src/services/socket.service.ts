@@ -129,7 +129,7 @@ export class SocketService {
     this.socket.emit("joinRoom", request);
   }
 
-  leaveRoom(request: QuitRoomRequest): void {
+  quitRoom(request: QuitRoomRequest): void {
     this.socket.emit("quitRoom", request);
   }
 
