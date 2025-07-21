@@ -27,6 +27,14 @@ export interface RemoveRoomRequest {
   creatorId: string;
 }
 
+// startRound
+
+export interface StartRoundRequest {
+    roomId: string;
+    taskId: string;
+    creatorId: string;
+}
+
 // revealVotes
 
 export interface RevealVotesRequest {
