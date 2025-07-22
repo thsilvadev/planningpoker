@@ -162,13 +162,26 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
   getCompletedTaskTooltip(task: Task): string {
     const description = task.description || "Sem descrição";
 
-    if (!Array.isArray(task.votes) || task.votes.length === 0) {
+    console.log("🔍 Task votes:", task.votes);
+    console.log("🔍 Task votes keys:", Object.keys(task.votes || {}));
+
+    // Verificar se há votos (objeto não vazio)
+    if (!task.votes || Object.keys(task.votes).length === 0) {
       return `${description}\n\nNenhum voto registrado`;
     }
 
-    // Criar uma linha para cada voto
-    const votesText = task.votes
-      .map((vote) => `${vote.participantName}: ${vote.value}`)
+    // Converter objeto para array de strings
+    const votesText = Object.entries(task.votes)
+      .map(([participantId, vote]) => {
+        // Buscar o nome do participante pelo ID
+        const participant = this.room?.participants.find(
+          (p) => p.id === participantId
+        );
+        const participantName =
+          participant?.name || `Participante ${participantId.slice(0, 6)}`;
+
+        return `${participantName}: ${vote}`
+      })
       .join("\n");
 
     return `${description}\n\nVotos:\n${votesText}`;

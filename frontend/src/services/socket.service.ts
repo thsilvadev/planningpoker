@@ -150,6 +150,11 @@ export class SocketService {
       console.log(response);
     });
 
+    this.socket.on("participantLeft", (room: Room) => {
+      this.roomSubject.next(room);
+      console.log("Participant left:", room);
+    });
+
     this.socket.on("exitedRoom", (response: string) => {
       this.roomSubject.next(null);
       console.log(response);
