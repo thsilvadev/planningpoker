@@ -3,11 +3,7 @@ import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { SocketService } from "../../../services/socket.service";
-import {
-  Room,
-  Task,
-  Vote,
-} from "../../../models/room.models";
+import { Room, Task, Vote } from "../../../models/room.models";
 import { Subscription } from "rxjs";
 
 @Component({
@@ -24,11 +20,12 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
   taskDescription = "";
   showAddTaskModal = false;
   voting = false;
-  taskQueue: Task[] =
-     [];
-  completedTasks: Task[] =
-     [];
+  taskQueue: Task[] = [];
+  completedTasks: Task[] = [];
   currentTask: Task | null | undefined = null;
+
+  // Controle do spinner
+  removing = false;
 
   //Encapsula observables aplicando métodos como add() e unsuscribe()
   private subscription: Subscription = new Subscription();
@@ -77,7 +74,7 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
         roomId: this.roomId,
       });
       this.closeAddTaskModal();
-      console.log('Task created, this room:', this.room)
+      console.log("Task created, this room:", this.room);
     }
   }
 
@@ -115,7 +112,7 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
   // UTILIDADES
 
   hasVoted(participantId: string): boolean {
-    if (this.room?.votingStatus.status !== 'voting') return false;
+    if (this.room?.votingStatus.status !== "voting") return false;
     return this.room.participants.some(
       (participant) => participant.id === participantId && participant.hasVoted
     );
@@ -130,25 +127,46 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
   }
 
   private updateRoomData(): void {
-  if (!this.room) return;
-  
-  this.voting = this.room.votingStatus.status === "voting";
-  this.currentTask = this.voting 
-    ? this.room.tasks.find((task) => task.status === 'voting') 
-    : null;
-  this.taskQueue = this.room.tasks.filter((task) => task.status === "waiting");
-  this.completedTasks = this.room.tasks.filter((task) => task.status === "finished");
-}
+    if (!this.room) return;
+
+    this.voting = this.room.votingStatus.status === "voting";
+    this.currentTask = this.voting
+      ? this.room.tasks.find((task) => task.status === "voting")
+      : null;
+    this.taskQueue = this.room.tasks.filter(
+      (task) => task.status === "waiting"
+    );
+    this.completedTasks = this.room.tasks.filter(
+      (task) => task.status === "finished"
+    );
+  }
 
   // DELETAR SALA
 
+  confirmRemoveRoom(): void {
+    const confirmed = confirm(
+      "Tem certeza que deseja fechar esta sala?\n\n" +
+        "Esta ação é irreversível e todos os participantes serão desconectados."
+    );
+
+    if (confirmed) {
+      this.removeRoom();
+    }
+  }
+
   removeRoom(): void {
     if (this.room && this.socketService.creatorId) {
+      this.removing = true; // Inicia o spinner
       this.socketService.removeRoom({
         roomId: this.roomId,
         creatorId: this.socketService.creatorId,
       });
-      this.router.navigate(["/"]);
+
+      // Aguardar um pouco antes de navegar
+      setTimeout(() => {
+        console.log("Navegando para home...");
+        this.router.navigate(["/"]);
+      }, 1000);
     }
   }
 }

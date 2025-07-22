@@ -138,7 +138,7 @@
 
 .btn-finish-voting {
   padding: 0.75rem 1.5rem;
-  background: #ef4444;
+  background: #6eb92f;
   color: white;
   border: none;
   border-radius: 8px;
@@ -147,9 +147,9 @@
   transition: all 0.2s;
 
   &:hover:not(:disabled) {
-    background: #dc2626;
+    background: #2b8a13;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 4px 12px rgba(125, 239, 68, 0.4);
   }
 
   &:disabled {
@@ -159,6 +159,41 @@
     transform: none;
     box-shadow: none;
   }
+}
+
+.room-controls {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 1rem;
+  padding: 0 1rem;
+}
+
+.btn-close-room {
+  background-color: #dc3545;
+  border-color: #dc3545;
+  padding: 0.5rem 1rem;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover:not(:disabled) {
+    background-color: #c82333;
+    border-color: #bd2130;
+  }
+
+  &:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+  }
+}
+
+.task-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
 }
 
 /* Middle Section - 45% height */
@@ -395,7 +430,8 @@
     color: #374151;
   }
 
-  input, textarea {
+  input,
+  textarea {
     padding: 0.75rem 1rem;
     border: 2px solid #e5e7eb;
     border-radius: 8px;
@@ -476,8 +512,12 @@
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive */
@@ -485,7 +525,7 @@
   .participants-sidebar {
     width: 20%;
   }
-  
+
   .main-content {
     width: 80%;
   }
@@ -497,25 +537,25 @@
     height: auto;
     min-height: calc(100vh - 120px);
   }
-  
+
   .participants-sidebar {
     width: 100%;
     height: auto;
     max-height: 200px;
   }
-  
+
   .main-content {
     width: 100%;
     height: auto;
   }
-  
+
   .current-task-section,
   .task-queue-section,
   .completed-votes-section {
     height: auto;
     min-height: 150px;
   }
-  
+
   .task-cards-row {
     height: 140px;
   }
