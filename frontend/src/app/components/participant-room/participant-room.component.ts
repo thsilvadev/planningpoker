@@ -22,6 +22,9 @@ export class ParticipantRoomComponent implements OnInit, OnDestroy {
   currentTask: Task | null | undefined = null;
   participants: Participant[] = [];
 
+  votingValues: Vote[] = ["0", "1", "2", "3", "5", "8", "13", "20"];
+  selectedVote: Vote | null = null;
+
   // Controle do loading spinner
   removing = false;
 
@@ -63,8 +66,20 @@ export class ParticipantRoomComponent implements OnInit, OnDestroy {
 
   // AÇÕES DO PARTICIPANTE
 
+  submitVote(): void {
+    if (this.selectedVote !== null && this.currentTask) {
+      console.log("📤 Submitting vote:", this.selectedVote);
 
+      this.socketService.submitVote({
+        roomId: this.roomId,
+        participantId: this.socketService.participantId!,
+        vote: this.selectedVote,
+      });
 
+      // Resetar seleção após votar
+      this.selectedVote = null;
+    }
+  }
 
   // UTILIDADES
 
@@ -83,6 +98,34 @@ export class ParticipantRoomComponent implements OnInit, OnDestroy {
     return title.substring(0, maxLength - 3) + "...";
   }
 
+  getCompletedTaskTooltip(task: Task): string {
+    const description = task.description || "Sem descrição";
+
+    console.log("🔍 Task votes:", task.votes);
+    console.log("🔍 Task votes keys:", Object.keys(task.votes || {}));
+
+    // Verificar se há votos (objeto não vazio)
+    if (!task.votes || Object.keys(task.votes).length === 0) {
+      return `${description}\n\nNenhum voto registrado`;
+    }
+
+    // Converter objeto para array de strings
+    const votesText = Object.entries(task.votes)
+      .map(([participantId, vote]) => {
+        // Buscar o nome do participante pelo ID
+        const participant = this.room?.participants.find(
+          (p) => p.id === participantId
+        );
+        const participantName =
+          participant?.name || `Participante ${participantId.slice(0, 6)}`;
+
+        return `${participantName}: ${vote}`
+      })
+      .join("\n");
+
+    return `${description}\n\nVotos:\n${votesText}`;
+  }
+
   private updateRoomData(): void {
     if (!this.room) return;
 
@@ -97,6 +140,11 @@ export class ParticipantRoomComponent implements OnInit, OnDestroy {
       (task) => task.status === "finished"
     );
     this.participants = this.room.participants;
+  }
+
+  selectVote(value: Vote): void {
+    this.selectedVote = value;
+    console.log("🗳️ Vote selected:", value);
   }
 
   // DELETAR SALA
