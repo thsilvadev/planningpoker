@@ -1,6 +1,14 @@
 <div class="moderator-room-container" *ngIf="room">
   <!-- Sidebar - Participants (15% width) -->
   <aside class="participants-sidebar">
+    <!-- Botão para copiar ID da sala -->
+    <button
+      class="btn-copy-room-id"
+      (click)="copyRoomId()"
+      title="Clique para copiar o ID da sala"
+    >
+      📋 Copiar ID da Sala
+    </button>
     <h3>Participantes ({{ room.participants.length }})</h3>
     <div class="participants-list">
       <div class="participant-item creator">
@@ -18,7 +26,7 @@
         </div>
       </div>
       <div
-        *ngFor="let participant of room.participants"
+        *ngFor="let participant of participants"
         class="participant-item"
       >
         <div class="participant-info">
@@ -105,7 +113,7 @@
         <div
           *ngFor="let completedTask of completedTasks"
           class="mini-card"
-          [title]="completedTask.description"
+          [title]="getCompletedTaskTooltip(completedTask)"
         >
           <span class="mini-card-title">{{
             getTruncatedTitle(completedTask.title)
@@ -171,5 +179,3 @@
   <div class="spinner"></div>
   <p>Fechando sala...</p>
 </div>
-
-

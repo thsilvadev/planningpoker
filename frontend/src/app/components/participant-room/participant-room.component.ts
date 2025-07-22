@@ -3,7 +3,7 @@ import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { SocketService } from "../../../services/socket.service";
-import { Room, Task, Vote } from "../../../models/room.models";
+import { Participant, Room, Task, Vote } from "../../../models/room.models";
 import { Subscription } from "rxjs";
 
 @Component({
@@ -20,6 +20,7 @@ export class ParticipantRoomComponent implements OnInit, OnDestroy {
   queuedTasks: number = 0;
   completedTasks: Task[] = [];
   currentTask: Task | null | undefined = null;
+  participants: Participant[] = [];
 
   // Controle do loading spinner
   removing = false;
@@ -62,7 +63,7 @@ export class ParticipantRoomComponent implements OnInit, OnDestroy {
 
   // AÇÕES DO PARTICIPANTE
 
-  
+
 
 
   // UTILIDADES
@@ -95,6 +96,7 @@ export class ParticipantRoomComponent implements OnInit, OnDestroy {
     this.completedTasks = this.room.tasks.filter(
       (task) => task.status === "finished"
     );
+    this.participants = this.room.participants;
   }
 
   // DELETAR SALA

@@ -25,7 +25,7 @@ export class CleanupRoomsService implements OnModuleInit {
   // Método que faz a lógica de cleanup recebendo as salas como parâmetro
   cleanupInactiveRooms(rooms: Map<string, Room>): string[] {
     const now = new Date().getTime();
-    const tenMinutesAgo = now - 10 * 60 * 1000;
+    const tenMinutesAgo = now - 20 * 60 * 1000;
     const roomsToRemove: string[] = [];
 
     for (const [roomId, room] of rooms.entries()) {

@@ -37,9 +37,42 @@ export class SocketService {
     // Recupera o ID do criador e do participante do localStorage
     this.creatorId = localStorage.getItem("creatorId");
     this.participantId = localStorage.getItem("participantId");
-    this.socket = io(`http://localhost:3000/?creatorId=${this.creatorId}&participantId=${this.participantId}`);
+    // Construir URL dinamicamente
+    const backendUrl = this.getBackendUrl();
+    const queryParams = this.buildQueryParams();
+    const fullUrl = `${backendUrl}${queryParams}`;
+
+    console.log("🔌 Connecting to:", fullUrl);
+    this.socket = io(fullUrl);
 
     this.setupSocketListeners();
+  }
+
+  private getBackendUrl(): string {
+    const hostname = window.location.hostname;
+    const port = "3000";
+
+    if (hostname === "localhost" || hostname === "127.0.0.1") {
+      return `http://localhost:${port}`;
+    } else {
+      return `http://${hostname}:${port}`;
+    }
+  }
+
+  private buildQueryParams(): string {
+    const params = new URLSearchParams();
+
+    // Só adicionar se não for null/undefined
+    if (this.creatorId && this.creatorId !== "null") {
+      params.append("creatorId", this.creatorId);
+    }
+
+    if (this.participantId && this.participantId !== "null") {
+      params.append("participantId", this.participantId);
+    }
+
+    const queryString = params.toString();
+    return queryString ? `/?${queryString}` : "";
   }
 
   // LISTENERS PARA ATUALIZAÇÕES DO SERVIDOR
@@ -62,19 +95,26 @@ export class SocketService {
     });
 
     this.socket.on("moderateRoom", (room: Room) => {
-      this.roomSubject.next(room);
-      console.log('Room moderated:', room);
+      // Limpar participantId
+      this.participantId = null;
+      localStorage.removeItem("participantId");
       // Atualiza o ID do criador e armazena no localStorage
       this.creatorId = room.creatorId;
       localStorage.setItem("creatorId", room.creatorId);
+
+      this.roomSubject.next(room);
+      console.log("Room moderated:", room);
     });
 
     this.socket.on("roomRemoderated", (room: Room) => {
       this.roomSubject.next(room);
-      console.log('Room remoderated:', room);
+      console.log("Room remoderated:", room);
     });
 
     this.socket.on("roomJoined", (participantId: string) => {
+      // Limpar creatorId
+      this.creatorId = null;
+      localStorage.removeItem("creatorId");
       // Atualiza o ID do participante e armazena no localStorage
       this.participantId = participantId;
       localStorage.setItem("participantId", participantId);
@@ -90,7 +130,7 @@ export class SocketService {
 
     this.socket.on("taskCreated", (room: Room) => {
       this.roomSubject.next(room);
-      console.log('Task created:', room);
+      console.log("Task created:", room);
     });
 
     this.socket.on("votingStart", (room: Room) => {
@@ -137,15 +177,15 @@ export class SocketService {
   }
 
   createTask(request: CreateTaskRequest): void {
-    this.socket.emit("createTask", request)
+    this.socket.emit("createTask", request);
   }
 
   startRound(request: StartRoundRequest): void {
-    this.socket.emit("startRound", request)
+    this.socket.emit("startRound", request);
   }
 
   submitVote(request: SubmitVoteRequest): void {
-    this.socket.emit("submitVote", request)
+    this.socket.emit("submitVote", request);
   }
 
   revealVotes(request: RevealVotesRequest): void {
