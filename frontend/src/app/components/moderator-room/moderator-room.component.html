@@ -3,19 +3,26 @@
   <aside class="participants-sidebar">
     <h3>Participantes ({{ room.participants.length }})</h3>
     <div class="participants-list">
+      <div class="participant-item creator">
+        <div class="participant-info">
+          <span class="participant-name">{{ room.creator }}</span>
+          <span class="participant-role">Moderador</span>
+        </div>
+        <div class="participant-status">
+          <span *ngIf="room.votingStatus.status === 'voting'" class="vote-status">
+            {{ hasVoted(room.creatorId) ? '✓' : '⏳' }}
+          </span>
+        </div>
+      </div>
       <div 
         *ngFor="let participant of room.participants" 
         class="participant-item"
-        [class.moderator]="participant.isModerator"
-        [class.offline]="!participant.isOnline"
       >
         <div class="participant-info">
           <span class="participant-name">{{ participant.name }}</span>
-          <span class="participant-role" *ngIf="participant.isModerator">Moderador</span>
         </div>
         <div class="participant-status">
-          <span class="status-indicator" [class.online]="participant.isOnline"></span>
-          <span *ngIf="room.currentRound && !room.currentRound.isRevealed" class="vote-status">
+          <span *ngIf="voting" class="vote-status">
             {{ hasVoted(participant.id) ? '✓' : '⏳' }}
           </span>
         </div>
@@ -28,8 +35,8 @@
     <!-- Top Section - Current Task (15% height) -->
     <section class="current-task-section">
       <div class="task-header">
-        <h2 *ngIf="room.currentTask">{{ room.currentTask.title }}</h2>
-        <h2 *ngIf="!room.currentTask" class="no-task">Nenhuma tarefa selecionada</h2>
+        <h2 *ngIf="voting" class="task-title-with-tooltip" [title]="currentTask?.description">{{ currentTask?.title }}</h2>
+        <h2 *ngIf="!voting" class="no-task">Esperando...</h2>
       </div>
       <div class="task-actions">
         <button 
@@ -56,7 +63,8 @@
           <div 
             *ngFor="let task of taskQueue" 
             class="task-card"
-            [class.current]="room.currentTask?.id === task.id"
+            [title]="task.description"
+            [class.current]="currentTask?.id === task.id"
           >
             <div class="task-card-title">{{ task.title }}</div>
             <button 
@@ -78,6 +86,7 @@
         <div 
           *ngFor="let completedTask of completedTasks" 
           class="mini-card"
+          [title]="completedTask.description"
         >
           <span class="mini-card-title">{{ getTruncatedTitle(completedTask.title) }}</span>
         </div>

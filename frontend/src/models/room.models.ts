@@ -11,8 +11,8 @@ export interface Room {
   creatorId: string;
   participants: Participant[];
   tasks: Task[];
-  votingStatus: VotingStatus;
-  updatedAt?: Date; // Data de atualização da sala
+  votingStatus: VotingStatus; // Não precisava ter pois já tem Task.status = TaskStatus. É conveniente, mas depois refatoro.
+  updatedAt?: Date; // Pra fins de checagem de inatividade.
 }
 
 // PARTICIPANT
@@ -21,13 +21,13 @@ export interface Room {
 export interface Participant {
   id: string;
   name: string;
-  hasVoted: boolean; // Mudança: de vote para hasVoted
+  hasVoted: boolean; // Não precisava ter pois já existe Task.votes[participantName] = Vote. Depois refatoro.
 }
 
 
 // TASK
 
-export type TaskStatus = 'waiting' | 'voting' | 'finished'; // Evitando erros
+export type TaskStatus = 'waiting' | 'voting' | 'finished'; 
 export type Vote = '0' | '1' | '2' | '3' | '5' | '8' | '13' | '20'; // Valores possíveis para o voto
 export interface Task {
   id: string;

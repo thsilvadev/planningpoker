@@ -63,6 +63,7 @@ export class SocketService {
 
     this.socket.on("moderateRoom", (room: Room) => {
       this.roomSubject.next(room);
+      console.log('Room moderated:', room);
       // Atualiza o ID do criador e armazena no localStorage
       this.creatorId = room.creatorId;
       localStorage.setItem("creatorId", room.creatorId);
@@ -70,6 +71,7 @@ export class SocketService {
 
     this.socket.on("roomRemoderated", (room: Room) => {
       this.roomSubject.next(room);
+      console.log('Room remoderated:', room);
     });
 
     this.socket.on("roomJoined", (participantId: string) => {
@@ -88,6 +90,7 @@ export class SocketService {
 
     this.socket.on("taskCreated", (room: Room) => {
       this.roomSubject.next(room);
+      console.log('Task created:', room);
     });
 
     this.socket.on("votingStart", (room: Room) => {

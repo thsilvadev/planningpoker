@@ -10,8 +10,8 @@ import { CommonModule } from '@angular/common';
     <div class="app-container">
       <header class="app-header">
         <div class="container">
-          <h1>Planning Poker</h1>
-          <p class="subtitle">Ferramenta de estimativas colaborativa</p>
+          <h1>PP</h1>
+          <p class="subtitle">Planning Poker</p>
         </div>
       </header>
       
@@ -31,12 +31,18 @@ import { CommonModule } from '@angular/common';
       backdrop-filter: blur(10px);
       border-bottom: 1px solid rgba(255, 255, 255, 0.2);
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      height: 50px;
     }
 
     .container {
       max-width: 1200px;
       margin: 0 auto;
-      padding: 1rem 2rem;
+      padding: 0 1rem;
+      display: flex;
+      flex-direction: row;
+      align-items: center;
+      justify-content: start;
+      gap: 30px;
     }
 
     .app-header h1 {
@@ -49,7 +55,7 @@ import { CommonModule } from '@angular/common';
     .subtitle {
       color: #6b7280;
       margin: 0.25rem 0 0 0;
-      font-size: 0.875rem;
+      font-size: 0.975rem;
     }
 
     .main-content {
