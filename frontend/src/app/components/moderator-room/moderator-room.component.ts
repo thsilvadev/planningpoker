@@ -3,7 +3,7 @@ import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
 import { ActivatedRoute, Router } from "@angular/router";
 import { SocketService } from "../../../services/socket.service";
-import { Room, Task, Vote } from "../../../models/room.models";
+import { Participant, Room, Task, Vote } from "../../../models/room.models";
 import { Subscription } from "rxjs";
 
 @Component({
@@ -23,6 +23,7 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
   taskQueue: Task[] = [];
   completedTasks: Task[] = [];
   currentTask: Task | null | undefined = null;
+  participants: Participant[] = [];
 
   // Controle do spinner
   removing = false;
@@ -139,6 +140,38 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
     this.completedTasks = this.room.tasks.filter(
       (task) => task.status === "finished"
     );
+    this.participants = this.room.participants;
+  }
+
+  copyRoomId(): void {
+    if (this.roomId) {
+      navigator.clipboard.writeText(this.roomId).then(
+        () => {
+          console.log("Room ID copied to clipboard:", this.roomId);
+          // Feedback visual opcional (você pode remover se não quiser)
+          alert("ID da sala copiado para a área de transferência!");
+        },
+        (err) => {
+          console.error("Failed to copy room ID:", err);
+          // Fallback para navegadores mais antigos
+        }
+      );
+    }
+  }
+
+  getCompletedTaskTooltip(task: Task): string {
+    const description = task.description || "Sem descrição";
+
+    if (!Array.isArray(task.votes) || task.votes.length === 0) {
+      return `${description}\n\nNenhum voto registrado`;
+    }
+
+    // Criar uma linha para cada voto
+    const votesText = task.votes
+      .map((vote) => `${vote.participantName}: ${vote.value}`)
+      .join("\n");
+
+    return `${description}\n\nVotos:\n${votesText}`;
   }
 
   // DELETAR SALA

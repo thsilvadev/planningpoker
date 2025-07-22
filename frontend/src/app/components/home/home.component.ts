@@ -10,7 +10,6 @@ import { SocketService } from "../../../services/socket.service";
   imports: [CommonModule, FormsModule],
   templateUrl: "./home.component.html",
   styleUrls: ["./home.component.scss"],
-    
 })
 export class HomeComponent {
   moderatorName = "";
@@ -26,15 +25,22 @@ export class HomeComponent {
 
     this.socketService.room$.subscribe((room) => {
       if (room) {
+        console.log("📡 Room received:", room);
+        console.log("🔑 CreatorId:", this.socketService.creatorId);
+        console.log("👤 ParticipantId:", this.socketService.participantId);
+
         if (this.socketService.creatorId) {
+          console.log("🏛️ Navigating to moderate-room");
           setTimeout(() => {
             this.router.navigate(["/moderate-room", room.id]);
-          }, 1000); // Aguardar 1 segundo antes de navegar
-        }
-        if (this.socketService.participantId) {
+          }, 1000);
+        } else if (this.socketService.participantId) {
+          console.log("👥 Navigating to participant-room");
           setTimeout(() => {
             this.router.navigate(["/participant-room", room.id]);
-          }, 1000); // Aguardar 1 segundo antes de navegar
+          }, 1000);
+        } else {
+          console.error("❌ Neither creatorId nor participantId is set");
         }
       }
     });

@@ -160,7 +160,7 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
         'enterRoom',
         this.roomSanitizerService.sanitizeRoom(newRoomState), // Sanitiza a sala (remove os IDs do moderador e participantes) antes de enviar
       );
-      client.emit('roomJoined', { participantId });
+      client.emit('roomJoined', participantId);
       console.log(`Participant ${name} joined room ${roomId}`);
     } else {
       console.error(

@@ -4,6 +4,8 @@
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
+
+
 /* Participants Sidebar - 15% width */
 .participants-sidebar {
   width: 15%;
@@ -19,6 +21,35 @@
     color: #374151;
     margin-bottom: 1rem;
     text-align: center;
+  }
+}
+
+.btn-copy-room-id {
+  width: 100%;
+  padding: 0.75rem;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  margin-bottom: 1rem;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+
+  &:hover {
+    background: linear-gradient(135deg, #1d4ed8, #1e40af);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  &:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
   }
 }
 
