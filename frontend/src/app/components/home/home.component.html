@@ -1,0 +1,108 @@
+<div class="home-container">
+  <div class="container">
+    <div class="welcome-section">
+      <h2>Bem-vindo ao Planning Poker</h2>
+      <p>
+        Realize estimativas colaborativas com sua equipe usando a técnica
+        Planning Poker.
+      </p>
+    </div>
+
+    <div class="actions-grid">
+      <div class="action-card">
+        <h3>Criar Nova Sala</h3>
+        <p>Inicie uma nova sessão de Planning Poker</p>
+        <form (ngSubmit)="createRoom()" class="action-form">
+          <div class="form-group">
+            <label>Seu nome</label>
+            <input
+              type="text"
+              [(ngModel)]="moderatorName"
+              name="moderatorName"
+              placeholder="Digite seu nome"
+              required
+              maxlength="50"
+            />
+          </div>
+          <button
+            type="submit"
+            class="btn btn-primary"
+            [disabled]="!moderatorName.trim()"
+          >
+            Criar Sala
+          </button>
+        </form>
+      </div>
+
+      <div class="action-card">
+        <h3>Entrar em Sala</h3>
+        <p>Participe de uma sessão existente</p>
+        <form (ngSubmit)="joinRoom()" class="action-form">
+          <div class="form-group">
+            <label>ID da Sala</label>
+            <input
+              type="text"
+              [(ngModel)]="roomId"
+              name="roomId"
+              placeholder="ID da sala"
+              required
+              maxlength="100"
+            />
+          </div>
+          <div class="form-group">
+            <label>Seu nome</label>
+            <input
+              type="text"
+              [(ngModel)]="participantName"
+              name="participantName"
+              placeholder="Digite seu nome"
+              required
+              maxlength="50"
+            />
+          </div>
+          <button
+            type="submit"
+            class="btn btn-secondary"
+            [disabled]="!roomId.trim() || !participantName.trim()"
+          >
+            Entrar na Sala
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="features-section">
+      <h3>Como funciona?</h3>
+      <div class="features-grid">
+        <div class="feature-item">
+          <div class="feature-icon">🎯</div>
+          <h4>Defina Tarefas</h4>
+          <p>
+            O moderador define tarefas com título e descrição para estimativa
+          </p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">🃏</div>
+          <h4>Vote com Cartas</h4>
+          <p>
+            Participantes escolhem cartas (1, 2, 3, 5, 8, 13, etc.) para estimar
+          </p>
+        </div>
+        <div class="feature-item">
+          <div class="feature-icon">👥</div>
+          <h4>Revele Resultados</h4>
+          <p>Veja os votos de todos simultaneamente após a rodada</p>
+        </div>
+      </div>
+    </div>
+
+    <div *ngIf="error" class="error-message">
+      {{ error }}
+    </div>
+  </div>
+</div>
+<!-- Loading existente -->
+<div class="loading" *ngIf="moving">
+  <div class="spinner"></div>
+  <p>Carregando sala...</p>
+</div>

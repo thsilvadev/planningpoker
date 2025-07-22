@@ -1,0 +1,109 @@
+<div class="participant-room-container" *ngIf="room">
+  <!-- Sidebar - Participants (15% width) -->
+  <aside class="participants-sidebar">
+    <h3>Participantes ({{ room.participants.length + 1 }})</h3>
+    <div class="participants-list">
+      <div class="participant-item creator">
+        <div class="participant-info">
+          <span class="participant-name"
+            >{{ room.creator }} [{{ queuedTasks }}]</span
+          >
+          <span class="participant-role">Moderador</span>
+        </div>
+        <div class="participant-status">
+          <span
+            *ngIf="room.votingStatus.status === 'voting'"
+            class="vote-status"
+          >
+            {{ hasVoted(room.creatorId) ? "✓" : "⏳" }}
+          </span>
+        </div>
+      </div>
+      <div *ngFor="let participant of participants" class="participant-item">
+        <div class="participant-info">
+          <span class="participant-name">{{ participant.name }}</span>
+        </div>
+        <div class="participant-status">
+          <span *ngIf="voting" class="vote-status">
+            {{ hasVoted(participant.id) ? "✓" : "⏳" }}
+          </span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content (85% width) -->
+  <main class="main-content">
+    <!-- Botão de fechar sala - acima da current-task-section -->
+    <div class="room-controls">
+      <button
+        class="btn btn-danger btn-close-room"
+        (click)="confirmQuitRoom()"
+        title="Fechar sala permanentemente"
+      >
+        Sair da Sala
+      </button>
+    </div>
+    <!-- Top Section - Current Task (45% height) -->
+    <section class="current-task-section">
+      <div class="task-header">
+        <div *ngIf="voting" class="task-info">
+          <h2
+            class="task-title-with-tooltip"
+            [title]="currentTask?.description"
+          >
+            {{ currentTask?.title }}
+          </h2>
+          <div class="task-body">
+            <p class="task-description">
+              {{ currentTask?.description }}
+            </p>
+          </div>
+        </div>
+        <h2 *ngIf="!voting" class="no-task">Esperando...</h2>
+        <div class="task-voting">
+            <div class="voting-options">
+              <button
+                *ngFor="let value of votingValues"
+                class="vote-btn"
+                [class.selected]="selectedVote === value"
+                (click)="selectVote(value)"
+              >
+                {{ value }}
+              </button>
+            </div>
+
+            <button
+              class="btn-submit-vote"
+              [disabled]="selectedVote === null"
+              (click)="submitVote()"
+            >
+              VOTAR
+            </button>
+          </div>
+      </div>
+    </section>
+
+    <!-- Bottom Section - Completed Votes (40% height) -->
+    <section class="completed-votes-section">
+      <h3>Votações Finalizadas</h3>
+      <div class="completed-votes-container">
+        <div
+          *ngFor="let completedTask of completedTasks"
+          class="mini-card"
+          [title]="getCompletedTaskTooltip(completedTask)"
+        >
+          <span class="mini-card-title">{{
+            getTruncatedTitle(completedTask.title)
+          }}</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Adicionar este loading específico -->
+  <div class="loading" *ngIf="removing">
+    <div class="spinner"></div>
+    <p>Fechando sala...</p>
+  </div>
+</div>
