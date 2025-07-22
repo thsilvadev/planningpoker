@@ -12,6 +12,7 @@ import {
   RemoveRoomRequest,
   StartRoundRequest,
 } from "../models/request.models";
+import { environment } from "../../src/environments/environment";
 
 @Injectable({
   providedIn: "root",
@@ -49,13 +50,14 @@ export class SocketService {
   }
 
   private getBackendUrl(): string {
-    const hostname = window.location.hostname;
+    const hostname = environment.BACKEND_URL;
+    console.log("Hostname from environment:", hostname);
     const port = "3000";
 
     if (hostname === "localhost" || hostname === "127.0.0.1") {
       return `http://localhost:${port}`;
     } else {
-      return `http://${hostname}:${port}`;
+      return `${hostname}`;
     }
   }
 

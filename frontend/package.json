@@ -3,7 +3,7 @@
   "private": true,
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
+    "start": "node -r dotenv/config mynode.js && ng serve",
     "build": "ng build"
   },
   "dependencies": {
@@ -15,6 +15,7 @@
     "@angular/material": "^20.1.2",
     "@angular/platform-browser": "^20.0.0",
     "@angular/router": "^20.0.0",
+    "dotenv": "^17.2.0",
     "rxjs": "^7.8.2",
     "socket.io-client": "^4.8.1",
     "tslib": "^2.5.0",
