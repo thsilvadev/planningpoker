@@ -10,7 +10,7 @@ import { CommonModule } from '@angular/common';
     <div class="app-container">
       <header class="app-header">
         <div class="container">
-          <h1>PP</h1>
+          <h1><a class="home-logo" href="/">PP</a></h1>
           <p class="subtitle">Planning Poker</p>
         </div>
       </header>
@@ -36,13 +36,17 @@ import { CommonModule } from '@angular/common';
 
     .container {
       max-width: 1200px;
-      margin: 0 auto;
+      margin: 0 0;
       padding: 0 1rem;
       display: flex;
       flex-direction: row;
       align-items: center;
       justify-content: start;
       gap: 30px;
+    }
+
+    .home-logo {
+      text-decoration: none;
     }
 
     .app-header h1 {

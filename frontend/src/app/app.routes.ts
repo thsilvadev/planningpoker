@@ -4,6 +4,7 @@ import { ModeratorRoomComponent } from './components/moderator-room/moderator-ro
 
 export const routes: Routes = [
   { path: '', component: HomeComponent },
-  { path: 'room/:id', component: ModeratorRoomComponent },
+  { path: 'moderate-room/:id', component: ModeratorRoomComponent },
+  //{ path: 'participant-room/:id', component: ParticipantRoomComponent },
   { path: '**', redirectTo: '' }
 ];
