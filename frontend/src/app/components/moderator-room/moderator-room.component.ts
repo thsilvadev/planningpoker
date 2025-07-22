@@ -22,12 +22,13 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
   roomId: string = "";
   taskTitle = "";
   taskDescription = "";
-  voting = this.room?.votingStatus.status === "voting" ? true : false;
   showAddTaskModal = false;
+  voting = false;
   taskQueue: Task[] =
-    this.room?.tasks.filter((task) => task.status === "waiting") || [];
+     [];
   completedTasks: Task[] =
-    this.room?.tasks.filter((task) => task.status === "finished") || [];
+     [];
+  currentTask: Task | null | undefined = null;
 
   //Encapsula observables aplicando métodos como add() e unsuscribe()
   private subscription: Subscription = new Subscription();
@@ -44,6 +45,10 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
     this.subscription.add(
       this.socketService.room$.subscribe((room) => {
         this.room = room;
+
+        if (room) {
+          this.updateRoomData();
+        }
       })
     );
     // Adiciona o Observable do socketService para receber atualizações de conexão e erros e se inscreve nele.
@@ -72,6 +77,7 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
         roomId: this.roomId,
       });
       this.closeAddTaskModal();
+      console.log('Task created, this room:', this.room)
     }
   }
 
@@ -122,6 +128,19 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
     }
     return title.substring(0, maxLength - 3) + "...";
   }
+
+  private updateRoomData(): void {
+  if (!this.room) return;
+  
+  this.voting = this.room.votingStatus.status === "voting";
+  this.currentTask = this.voting 
+    ? this.room.tasks.find((task) => task.status === 'voting') 
+    : null;
+  this.taskQueue = this.room.tasks.filter((task) => task.status === "waiting");
+  this.completedTasks = this.room.tasks.filter((task) => task.status === "finished");
+}
+
+  // DELETAR SALA
 
   removeRoom(): void {
     if (this.room && this.socketService.creatorId) {

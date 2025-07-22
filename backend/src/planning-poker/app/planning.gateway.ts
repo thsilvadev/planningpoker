@@ -60,14 +60,16 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
           const room = this.roomService.getRoomByParticipantId(participantId);
           if (room) {
             this.planningService.joinSession(socketClient, room.id);
-            socketClient.emit('roomRemoderated', room);
+            socketClient.emit('roomRejoined', room);
+            console.log(`Participant reconnected to room ${room.id}`);
           }
         }
         if (creatorId) {
           const room = this.roomService.getRoomByCreatorId(creatorId);
           if (room) {
             this.planningService.joinSession(socketClient, room.id);
-            socketClient.emit('roomRejoined', room);
+            socketClient.emit('roomRemoderated', room);
+            console.log(`Moderator reconnected to room ${room.id}`);
           }
         }
       }
@@ -209,12 +211,10 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
   ): void {
     const { roomId, taskId, creatorId } = startRoundDto;
     const newRoomState = this.roomService.getRoom(roomId);
-    if (
-      newRoomState &&
-      newRoomState.creatorId === creatorId &&
-      newRoomState.tasks.some((t) => t.id === taskId)
-    ) {
+    const task = newRoomState?.tasks.find((t) => t.id === taskId);
+    if (newRoomState && newRoomState.creatorId === creatorId && task) {
       newRoomState.votingStatus = { status: 'voting', taskId };
+      task.status = 'voting'; // Atualiza o status da tarefa para 'voting'
       newRoomState.participants.forEach((p) => {
         p.hasVoted = false; // Resetar hasVoted para false
       });
@@ -253,6 +253,11 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
         status: 'revealed',
         taskId: newRoomState.votingStatus.taskId,
       };
+      newRoomState.tasks.forEach((task) => {
+        if (task.status === 'voting') {
+          task.status = 'finished'; // Atualiza o status da tarefa para 'finished'
+        }
+      });
 
       this.server
         .to(roomId)
