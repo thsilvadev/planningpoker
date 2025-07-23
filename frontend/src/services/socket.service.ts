@@ -40,18 +40,33 @@ export class SocketService {
     this.participantId = localStorage.getItem("participantId");
     // Construir URL dinamicamente
     const backendUrl = this.getBackendUrl();
-    const queryParams = this.buildQueryParams();
-    const fullUrl = `${backendUrl}${queryParams}`;
+    const fullUrl = `${backendUrl}`;
+    // Usar extraHeaders em vez de query params
+    const socketConfig: any = {
+      forceNew: true,
+      transportOptions: {
+        polling: {
+          extraHeaders: {},
+        },
+      },
+    };
 
-    console.log("🔌 Connecting to:", fullUrl);
-    this.socket = io(fullUrl);
+    if (this.creatorId) {
+      socketConfig.transportOptions.polling.extraHeaders["x-creator-id"] =
+        this.creatorId;
+    }
 
+    if (this.participantId) {
+      socketConfig.transportOptions.polling.extraHeaders["x-participant-id"] =
+        this.participantId;
+    }
+
+    this.socket = io(fullUrl, socketConfig);
     this.setupSocketListeners();
   }
 
   private getBackendUrl(): string {
     const hostname = environment.BACKEND_URL;
-    console.log("Hostname from environment:", hostname);
     const port = "3000";
 
     if (hostname === "localhost" || hostname === "127.0.0.1") {
@@ -59,22 +74,6 @@ export class SocketService {
     } else {
       return `${hostname}`;
     }
-  }
-
-  private buildQueryParams(): string {
-    const params = new URLSearchParams();
-
-    // Só adicionar se não for null/undefined
-    if (this.creatorId && this.creatorId !== "null") {
-      params.append("creatorId", this.creatorId);
-    }
-
-    if (this.participantId && this.participantId !== "null") {
-      params.append("participantId", this.participantId);
-    }
-
-    const queryString = params.toString();
-    return queryString ? `/?${queryString}` : "";
   }
 
   // LISTENERS PARA ATUALIZAÇÕES DO SERVIDOR
