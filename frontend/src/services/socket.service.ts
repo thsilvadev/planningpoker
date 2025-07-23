@@ -12,7 +12,7 @@ import {
   RemoveRoomRequest,
   StartRoundRequest,
 } from "../models/request.models";
-import { environment } from "../../src/environments/environment";
+import { environment } from "../../src/environments/environment.prod";
 
 @Injectable({
   providedIn: "root",
