@@ -73,7 +73,11 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
           }
         }
       }
-      // Aqui você pode adicionar lógica adicional para lidar com a conexão do cliente, se necessário
+
+      this.server.on('connect_error', (err) => {
+        console.error('Connection error:', err);
+        socketClient.emit('error', 'Connection error');
+      });
     });
 
     // Registrar callback de limpeza
