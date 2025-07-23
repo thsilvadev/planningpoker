@@ -2,7 +2,7 @@
 
 Ferramenta web para estimativas de tarefas baseada na técnica **Planning Poker**, ideal para equipes ágeis. Simples, colaborativa e em tempo real — sem necessidade de persistência de dados.
 
-# App online [aqui](https://planningpoker-by0z38709-thsilvadevs-projects.vercel.app/)!
+# App online [aqui](https://planningpoker-delta.vercel.app/)!
 
 ##  Planning Poker - Setup Local
 
