@@ -45,11 +45,15 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     this.server.on('connection', (socketClient) => {
       console.log(
         `socketClient connected: ${socketClient.id}, handshake:`,
-        socketClient.handshake.query,
+        socketClient.handshake.headers,
       );
       // Se o cliente já tem um participantId, ele está reconectando
-      const participantId = socketClient.handshake.query.participantId;
-      const creatorId = socketClient.handshake.query.creatorId;
+      const participantId = socketClient.handshake.headers[
+        'x-participant-id'
+      ] as string;
+      const creatorId = socketClient.handshake.headers[
+        'x-creator-id'
+      ] as string;
       if (!participantId && !creatorId) {
         // Se não tem participantId nem creatorId, é um novo cliente
         socketClient.emit('newConnection', {
