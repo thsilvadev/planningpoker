@@ -1,7 +1,7 @@
 import { Injectable } from "@angular/core";
 import { io, Socket } from "socket.io-client";
-import { Observable, BehaviorSubject } from "rxjs";
-import { Room, Participant, Task, Vote } from "../models/room.models";
+import { BehaviorSubject } from "rxjs";
+import { Room } from "../models/room.models";
 import {
   CreateRoomRequest,
   JoinRoomRequest,
@@ -19,28 +19,24 @@ import { environment } from "../../src/environments/environment";
 })
 export class SocketService {
   private socket: Socket;
-  // Subject da sala para manter o estado da sala atual
-  // e emitir atualizações para os componentes interessados
+  // Subject da sala para manter o estado da sala atual, conexão e erros
   private roomSubject = new BehaviorSubject<Room | null>(null);
-  // Subjects para manter o estado da conexão e erros
   private connectedSubject = new BehaviorSubject<boolean>(false);
   private errorSubject = new BehaviorSubject<string | null>(null);
-
-  // Variáveis para armazenar o ID do usuário atual
-  public participantId: string | null = null;
-  public creatorId: string | null = null;
-
+  // Observables a partir dos Subjects
   public room$ = this.roomSubject.asObservable();
   public connected$ = this.connectedSubject.asObservable();
   public error$ = this.errorSubject.asObservable();
-
+  
+  // Variáveis para armazenar o ID do usuário atual
+  public participantId: string | null = null;
+  public creatorId: string | null = null;
   constructor() {
     // Recupera o ID do criador e do participante do localStorage
     this.creatorId = localStorage.getItem("creatorId");
     this.participantId = localStorage.getItem("participantId");
-    // Construir URL dinamicamente
+
     const backendUrl = this.getBackendUrl();
-    const fullUrl = `${backendUrl}`;
     // Usar extraHeaders em vez de query params
     const socketConfig: any = {
       forceNew: true,
@@ -61,7 +57,7 @@ export class SocketService {
         this.participantId;
     }
 
-    this.socket = io(fullUrl, socketConfig);
+    this.socket = io(backendUrl, socketConfig);
     this.setupSocketListeners();
   }
 
@@ -77,9 +73,6 @@ export class SocketService {
   }
 
   // LISTENERS PARA ATUALIZAÇÕES DO SERVIDOR
-
-  // Configura os listeners do socket para receber eventos do servidor
-  // e atualizar os Subjects correspondentes
 
   private setupSocketListeners(): void {
     this.socket.on("connect", () => {
@@ -163,8 +156,6 @@ export class SocketService {
   }
 
   // FUNÇÕES PARA EMITIR EVENTOS PARA O SERVIDOR
-  // Essas funções emitem eventos para o servidor com os dados necessários
-  // para criar, entrar, sair ou modificar salas e tarefas.
 
   createRoom(request: CreateRoomRequest): void {
     this.socket.emit("createRoom", request);
