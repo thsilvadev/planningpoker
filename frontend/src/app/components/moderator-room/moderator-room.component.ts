@@ -164,6 +164,7 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
 
     console.log("🔍 Task votes:", task.votes);
     console.log("🔍 Task votes keys:", Object.keys(task.votes || {}));
+    console.log("🔍 Current participants:", this.room?.participants.map(p => ({ id: p.id, name: p.name })));
 
     // Verificar se há votos (objeto não vazio)
     if (!task.votes || Object.keys(task.votes).length === 0) {

@@ -27,7 +27,7 @@ export class SocketService {
   public room$ = this.roomSubject.asObservable();
   public connected$ = this.connectedSubject.asObservable();
   public error$ = this.errorSubject.asObservable();
-  
+
   // Variáveis para armazenar o ID do usuário atual
   public participantId: string | null = null;
   public creatorId: string | null = null;
@@ -75,6 +75,9 @@ export class SocketService {
   // LISTENERS PARA ATUALIZAÇÕES DO SERVIDOR
 
   private setupSocketListeners(): void {
+
+    //[CONEXÃO]
+
     this.socket.on("connect", () => {
       this.connectedSubject.next(true);
       this.errorSubject.next(null);
@@ -88,6 +91,8 @@ export class SocketService {
       this.errorSubject.next(error);
     });
 
+    //[SALAS]
+
     this.socket.on("moderateRoom", (room: Room) => {
       // Limpar participantId
       this.participantId = null;
@@ -100,11 +105,6 @@ export class SocketService {
       console.log("Room moderated:", room);
     });
 
-    this.socket.on("roomRemoderated", (room: Room) => {
-      this.roomSubject.next(room);
-      console.log("Room remoderated:", room);
-    });
-
     this.socket.on("roomJoined", (participantId: string) => {
       // Limpar creatorId
       this.creatorId = null;
@@ -114,9 +114,7 @@ export class SocketService {
       localStorage.setItem("participantId", participantId);
     });
 
-    this.socket.on("roomRejoined", (room: Room) => {
-      this.roomSubject.next(room);
-    });
+    //[AÇÕES]
 
     this.socket.on("enterRoom", (room: Room) => {
       this.roomSubject.next(room);
@@ -152,6 +150,16 @@ export class SocketService {
     this.socket.on("exitedRoom", (response: string) => {
       this.roomSubject.next(null);
       console.log(response);
+    });
+
+    //[RECONEXÃO]: Quando há um participantId ou creatorId nos headers da requisão, é porque o usuário está se reconectando ao servidor sem ter saído de uma sala -> vamos utilizar o seu id para redirecioná-lo à sua sala.
+    this.socket.on("roomRejoined", (room: Room) => {
+      this.roomSubject.next(room);
+    });
+
+    this.socket.on("roomRemoderated", (room: Room) => {
+      this.roomSubject.next(room);
+      console.log("Room remoderated:", room);
     });
   }
 

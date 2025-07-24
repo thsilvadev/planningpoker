@@ -19,10 +19,11 @@ export class HomeComponent {
   moving = false; // Controle do loading
 
   constructor(private socketService: SocketService, private router: Router) {
+    // Checar erros e logar.
     this.socketService.error$.subscribe((error) => {
       this.error = error;
     });
-
+    // Inscrever-se no Observable de sala para redirecionar o usuário [RECONEXÃO]
     this.socketService.room$.subscribe((room) => {
       if (room) {
         console.log("📡 Room received:", room);
@@ -30,17 +31,20 @@ export class HomeComponent {
         console.log("👤 ParticipantId:", this.socketService.participantId);
 
         if (this.socketService.creatorId) {
+          // Se o usuário for o criador de uma sala existente, redireciona para a respectiva sala [moderate-room]
           console.log("🏛️ Navigating to moderate-room");
           setTimeout(() => {
             this.router.navigate(["/moderate-room", room.id]);
           }, 1000);
         } else if (this.socketService.participantId) {
+          // Se o usuário for um participante de uma sala existente, redireciona para a sala [participant-room]
           console.log("👥 Navigating to participant-room");
           setTimeout(() => {
             this.router.navigate(["/participant-room", room.id]);
           }, 1000);
         } else {
-          console.error("❌ Neither creatorId nor participantId is set");
+          // Mantém o usuário na página inicial se nenhum ID estiver definido
+          console.error("Neither creatorId nor participantId is set");
         }
       }
     });
