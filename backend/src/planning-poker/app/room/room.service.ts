@@ -43,7 +43,10 @@ export class RoomService {
     participantName: string,
   ): { newRoomState: Room; participantId: string } | undefined {
     const room = this.getRoom(roomId);
-    if (room) {
+    const nameNotInUse = !room?.participants.some(
+      (participant) => participant.name === participantName,
+    );
+    if (room && nameNotInUse) {
       const participant: Participant = {
         id: uuid(),
         name: participantName,

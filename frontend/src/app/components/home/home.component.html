@@ -68,6 +68,9 @@
             Entrar na Sala
           </button>
         </form>
+        <div *ngIf="error" class="error-message">
+          {{ error }}
+        </div>
       </div>
     </div>
 
@@ -94,10 +97,6 @@
           <p>Veja os votos de todos simultaneamente após a rodada</p>
         </div>
       </div>
-    </div>
-
-    <div *ngIf="error" class="error-message">
-      {{ error }}
     </div>
   </div>
 </div>
