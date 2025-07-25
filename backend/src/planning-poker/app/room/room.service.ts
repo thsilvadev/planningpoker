@@ -43,9 +43,13 @@ export class RoomService {
     participantName: string,
   ): { newRoomState: Room; participantId: string } | undefined {
     const room = this.getRoom(roomId);
-    const nameNotInUse = !room?.participants.some(
-      (participant) => participant.name === participantName,
-    );
+    const nameNotInUse =
+      !room?.participants.some(
+        (participant) => participant.name === participantName,
+      ) &&
+      !room?.tasks.some(
+        (task) => task.votes && task.votes[`${participantName}`],
+      );
     if (room && nameNotInUse) {
       const participant: Participant = {
         id: uuid(),
