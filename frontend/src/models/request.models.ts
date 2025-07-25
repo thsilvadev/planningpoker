@@ -56,5 +56,6 @@ export interface CreateTaskRequest {
 export interface SubmitVoteRequest {
   roomId: string;
   participantId: string;
+  participantName: string;
   vote: Vote;
 }
