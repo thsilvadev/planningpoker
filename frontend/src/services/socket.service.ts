@@ -12,30 +12,37 @@ import {
   RemoveRoomRequest,
   StartRoundRequest,
 } from "../models/request.models";
-import { environment } from "../../src/environments/environment.prod";
+import { environment } from "../../src/environments/environment";
 
 @Injectable({
   providedIn: "root",
 })
 export class SocketService {
+  //// Propriedades privadas (internas)
   private socket: Socket;
-  // Subject da sala para manter o estado da sala atual, conexão e erros
+
+  // Subjects da sala para manter o estado da sala atual, conexão e erros 
   private roomSubject = new BehaviorSubject<Room | null>(null);
   private connectedSubject = new BehaviorSubject<boolean>(false);
   private errorSubject = new BehaviorSubject<string | null>(null);
-  // Observables a partir dos Subjects
+
+  //// Propriedades públicas (compartilhadas com os components Angular):
+  // Observables a partir dos Subjects 
   public room$ = this.roomSubject.asObservable();
   public connected$ = this.connectedSubject.asObservable();
   public error$ = this.errorSubject.asObservable();
-
   // Variáveis para armazenar o ID do usuário atual
   public participantId: string | null = null;
+  public participantName: string | null = null;
   public creatorId: string | null = null;
+
+
+
   constructor() {
-    // Recupera o ID do criador e do participante do localStorage
+    //// Recupera o ID do criador e do participante do localStorage para reconexão
     this.creatorId = localStorage.getItem("creatorId");
     this.participantId = localStorage.getItem("participantId");
-
+    this.participantName = localStorage.getItem("participantName");;
     const backendUrl = this.getBackendUrl();
     // Usar extraHeaders em vez de query params
     const socketConfig: any = {
@@ -46,7 +53,7 @@ export class SocketService {
         },
       },
     };
-
+    // Adiciona os IDs do criador e do participante aos headers da requisição
     if (this.creatorId) {
       socketConfig.transportOptions.polling.extraHeaders["x-creator-id"] =
         this.creatorId;
@@ -70,12 +77,12 @@ export class SocketService {
     } else {
       return `${hostname}`;
     }
+    
   }
 
   // LISTENERS PARA ATUALIZAÇÕES DO SERVIDOR
 
   private setupSocketListeners(): void {
-
     //[CONEXÃO]
 
     this.socket.on("connect", () => {
@@ -85,13 +92,26 @@ export class SocketService {
 
     this.socket.on("disconnect", () => {
       this.connectedSubject.next(false);
+      this.roomSubject.next(null);
     });
+
+    //[SOBRE ERROS]
 
     this.socket.on("error", (error: string) => {
       this.errorSubject.next(error);
+      this.roomSubject.next(null);
     });
 
-    //[SALAS]
+    this.socket.on("voteError", (error: string) => {
+      this.errorSubject.next(error);
+    });
+
+    this.socket.on("joinError", (error: string) => {
+      this.errorSubject.next(error);
+      this.roomSubject.next(null);
+    });
+
+    //[SOBRE SALAS]
 
     this.socket.on("moderateRoom", (room: Room) => {
       // Limpar participantId
@@ -105,16 +125,21 @@ export class SocketService {
       console.log("Room moderated:", room);
     });
 
-    this.socket.on("roomJoined", (participantId: string) => {
-      // Limpar creatorId
-      this.creatorId = null;
-      localStorage.removeItem("creatorId");
-      // Atualiza o ID do participante e armazena no localStorage
-      this.participantId = participantId;
-      localStorage.setItem("participantId", participantId);
-    });
+    this.socket.on("roomJoined", (participantId: string, callback: Function) => {
+    console.log(" Received participantId:", participantId);
+    
+    // Salvar no localStorage e na propriedade
+    localStorage.setItem("participantId", participantId);
+    this.participantId = participantId;
+    this.participantName = localStorage.getItem("participantName");
+    
+    console.log(" ParticipantId saved to localStorage");
+    
+    // ✅ IMPORTANTE: Confirmar que processou
+    callback({ success: true, message: "ParticipantId saved successfully" });
+  });
 
-    //[AÇÕES]
+    //[SOBRE AÇÕES]
 
     this.socket.on("enterRoom", (room: Room) => {
       this.roomSubject.next(room);
@@ -139,6 +164,8 @@ export class SocketService {
 
     this.socket.on("roomRemoved", (response: string) => {
       this.roomSubject.next(null);
+      localStorage.removeItem("creatorId");
+      localStorage.removeItem("participantId");
       console.log(response);
     });
 
@@ -149,6 +176,7 @@ export class SocketService {
 
     this.socket.on("exitedRoom", (response: string) => {
       this.roomSubject.next(null);
+      localStorage.removeItem("participantId");
       console.log(response);
     });
 
@@ -166,6 +194,7 @@ export class SocketService {
   // FUNÇÕES PARA EMITIR EVENTOS PARA O SERVIDOR
 
   createRoom(request: CreateRoomRequest): void {
+    this.errorSubject.next(null) // Limpar erros aqui
     this.socket.emit("createRoom", request);
   }
 
@@ -174,6 +203,7 @@ export class SocketService {
   }
 
   joinRoom(request: JoinRoomRequest): void {
+    this.errorSubject.next(null) // Limpar erros aqui
     this.socket.emit("joinRoom", request);
   }
 
