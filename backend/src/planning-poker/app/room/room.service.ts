@@ -5,8 +5,12 @@ import { Participant } from '../participant/interfaces/participant.interface';
 
 @Injectable()
 export class RoomService {
-  //No início do serviço, inicializar um mapa para armazenar as salas
+  //No início do serviço, inicializar um Map para armazenar as salas
   private rooms: Map<string, Room> = new Map();
+  //Sala aqui é o que chamaremos o objeto que armazena o estado atual de uma sala de planning poker (votos, participantes, tarefas...)
+  //Não é uma socket room -> essa chamaremos de Sessão para diferenciá-las.
+
+  //Métodos
 
   createRoom(moderatorName: string, clientId: string): Room {
     // Criar uma nova sala com um ID único e o nome do moderador
@@ -39,7 +43,14 @@ export class RoomService {
     participantName: string,
   ): { newRoomState: Room; participantId: string } | undefined {
     const room = this.getRoom(roomId);
-    if (room) {
+    const nameNotInUse =
+      !room?.participants.some(
+        (participant) => participant.name === participantName,
+      ) &&
+      !room?.tasks.some(
+        (task) => task.votes && task.votes[`${participantName}`],
+      );
+    if (room && nameNotInUse) {
       const participant: Participant = {
         id: uuid(),
         name: participantName,
@@ -47,13 +58,6 @@ export class RoomService {
       };
       room.participants.push(participant);
       return { newRoomState: room, participantId: participant.id };
-    }
-  }
-
-  updateRoomActivity(roomId: string): void {
-    const room = this.getRoom(roomId);
-    if (room) {
-      room.updatedAt = new Date(); // Atualiza a data de atualização da sala
     }
   }
 

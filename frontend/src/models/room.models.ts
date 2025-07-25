@@ -36,6 +36,6 @@ export interface Task {
   createdAt: Date;
   status: TaskStatus;
   votes: {
-    [participantId: string]: Vote;
+    [participantName: string]: Vote;
   };
 }

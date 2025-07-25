@@ -15,6 +15,7 @@ export interface SanitizedRoom {
 
 @Injectable()
 export class RoomSanitizerService {
+  // O propóstito dessa classe é SEGURANÇA -> esconder os IDs dos usuários do objeto Room enviado à todos da sala no frontend.
   sanitizeRoom(room: Room): SanitizedRoom {
     return {
       id: room.id,

@@ -24,7 +24,7 @@
           <span class="participant-name">{{ participant.name }}</span>
         </div>
         <div class="participant-status">
-          <span *ngIf="voting" class="vote-status">
+          <span *ngIf="isVoting" class="vote-status">
             {{ hasVoted(participant.id) ? "✓" : "⏳" }}
           </span>
         </div>
@@ -47,7 +47,7 @@
     <!-- Top Section - Current Task (45% height) -->
     <section class="current-task-section">
       <div class="task-header">
-        <div *ngIf="voting" class="task-info">
+        <div *ngIf="isVoting" class="task-info">
           <h2
             class="task-title-with-tooltip"
             [title]="currentTask?.description"
@@ -60,13 +60,14 @@
             </p>
           </div>
         </div>
-        <h2 *ngIf="!voting" class="no-task">Esperando...</h2>
+        <h2 *ngIf="!isVoting" class="no-task">Esperando...</h2>
         <div class="task-voting">
             <div class="voting-options">
               <button
                 *ngFor="let value of votingValues"
                 class="vote-btn"
                 [class.selected]="selectedVote === value"
+                [disabled]="userVoted || !isVoting"
                 (click)="selectVote(value)"
               >
                 {{ value }}
@@ -102,7 +103,7 @@
   </main>
 
   <!-- Adicionar este loading específico -->
-  <div class="loading" *ngIf="removing">
+  <div class="loading" *ngIf="isLeavingRoom">
     <div class="spinner"></div>
     <p>Fechando sala...</p>
   </div>

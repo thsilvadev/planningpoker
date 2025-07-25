@@ -77,33 +77,22 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
           }
         }
       }
-
-      this.server.on('connect_error', (err) => {
-        console.error('Connection error:', err);
-        socketClient.emit('error', 'Connection error');
-      });
     });
+
+    this.server.on('connect_error', (err) => {
+      console.error('Connection error:', err);
+    });
+
+    this.server.setMaxListeners(0);
 
     // Registrar callback de limpeza
     this.cleanupRoomsService.setCleanupCallback(() => {
       this.cleanupInactiveRooms();
     });
   }
-
+  // Handler padrão do NestJS
   handleDisconnect(client: Socket) {
     console.log(`socketClient disconnected: ${client.id}`);
-    // // Obs: o frontend deve anotar o nome do usuário e o roomId no socketClient no momento em que entra/cria a sala
-    // // Se o usuário tem nome, ele está em uma sala (estado).
-    // const { name, roomId } = client.handshake.query;
-    // if (typeof name === 'string' && typeof roomId === 'string') {
-    //   //Avisar os demais do usuário desconectado
-    //   //Remover o usuário da sala (estado)
-    //   this.server.emit('userDisconnected', name);
-    //   const room = this.roomService.getRoom(roomId);
-    //   if (room) {
-    //     room.participants = room.participants.filter((p) => p.name !== name);
-    //   }
-    // }
   }
 
   //Depois de muita pesquisa eu consegui fazer as validações de interface (DTO) funcionarem com o WebSocketGateway.
@@ -153,7 +142,10 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
       console.error(
         `Failed to join room ${roomId} for participant ${name}, socket ID: ${client.id}`,
       );
-      client.emit('error', 'Failed to join room');
+      client.emit(
+        'joinError',
+        'Erro ao entrar na sala -> tente mudar o seu nome.',
+      );
       return;
     }
     const { newRoomState, participantId } = result;
@@ -163,13 +155,23 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
       roomId,
     );
     if (newRoomState && joinedSession) {
-      //Envia a sala(estado) atualizada para todos os participantes da sala
-      this.server.to(roomId).emit(
-        'enterRoom',
-        this.roomSanitizerService.sanitizeRoom(newRoomState), // Sanitiza a sala (remove os IDs do moderador e participantes) antes de enviar
-      );
-      client.emit('roomJoined', participantId);
-      console.log(`Participant ${name} joined room ${roomId}`);
+      // Enviar participantId com callback de confirmação
+      client.emit('roomJoined', participantId, (acknowledgment: any) => {
+        // Este callback só executa DEPOIS que o frontend processar
+        console.log(
+          'Frontend confirmed participantId received:',
+          acknowledgment,
+        );
+
+        // AGORA sim enviar para todos na sala
+        this.server
+          .to(roomId)
+          .emit(
+            'enterRoom',
+            this.roomSanitizerService.sanitizeRoom(newRoomState),
+          );
+        console.log(`Participant ${name} joined room ${roomId}`);
+      });
     } else {
       console.error(
         `Failed to join room ${roomId} for participant ${name}, socket ID: ${client.id}`,
@@ -291,7 +293,7 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     submitVoteDto: SubmitVoteDto,
     @ConnectedSocket() client: Socket,
   ): void {
-    const { roomId, participantId, vote } = submitVoteDto;
+    const { roomId, participantId, participantName, vote } = submitVoteDto;
     const newRoomState = this.roomService.getRoom(roomId);
 
     if (newRoomState && newRoomState.votingStatus.status === 'voting') {
@@ -300,12 +302,13 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
         (t) => t.id === newVotingStatus.taskId,
       );
       const participant = newRoomState.participants.find(
-        (p) => p.id === participantId && !p.hasVoted,
+        (p) =>
+          p.id === participantId && !p.hasVoted && p.name === participantName,
       );
 
       if (currentTask && participant) {
         // Salvar o voto na task
-        currentTask.votes[participantId] = vote;
+        currentTask.votes[participantName] = vote;
 
         // Marcar que o participante votou
         participant.hasVoted = true;
@@ -323,7 +326,7 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
         console.error(
           `Task not found in room ${roomId} or participant has already voted`,
         );
-        client.emit('error', 'Task not found or you have already voted');
+        client.emit('voteError', 'Task not found or you have already voted');
       }
     } else {
       console.error(`Failed to submit vote in room ${roomId}`);
@@ -379,7 +382,7 @@ export class PlanningGateway implements OnModuleInit, OnGatewayDisconnect {
     const room = this.roomService.getRoom(roomId);
     if (room && creatorId === room.creatorId) {
       this.roomService.removeRoom(roomId);
-      this.server.to(roomId).emit('roomRemoved', `You removed room ${roomId}`);
+      this.server.to(roomId).emit('roomRemoved', `Room ${roomId} was removed`);
       void this.planningService.removeSession(roomId, this.server);
       console.log(`Room ${roomId} removed`);
     } else {

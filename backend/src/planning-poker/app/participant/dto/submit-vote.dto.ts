@@ -11,5 +11,9 @@ export class SubmitVoteDto {
 
   @IsString()
   @IsNotEmpty()
+  participantName: string;
+
+  @IsString()
+  @IsNotEmpty()
   vote: Vote;
 }

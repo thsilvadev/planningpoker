@@ -14,20 +14,20 @@ import { Subscription } from "rxjs";
   styleUrls: ["./moderator-room.component.scss"],
 })
 export class ModeratorRoomComponent implements OnInit, OnDestroy {
-  room: Room | null = null;
-  roomId: string = "";
-  taskTitle = "";
-  taskDescription = "";
-  showAddTaskModal = false;
-  voting = false;
-  taskQueue: Task[] = [];
-  completedTasks: Task[] = [];
-  currentTask: Task | null | undefined = null;
-  participants: Participant[] = [];
+  //// Propriedades públicas (compartilhadas com o template):
+  public room: Room | null = null;
+  public taskTitle = "";
+  public taskDescription = "";
+  public showAddTaskModal = false;
+  public voting = false;
+  public taskQueue: Task[] = [];
+  public completedTasks: Task[] = [];
+  public currentTask: Task | null | undefined = null;
+  public participants: Participant[] = [];
+  public isRemovingRoom = false;
 
-  // Controle do spinner
-  removing = false;
-
+  //// Propriedades privadas (só usadas internamente)
+  private roomId: string = "";
   //Encapsula observables aplicando métodos como add() e unsuscribe()
   private subscription: Subscription = new Subscription();
 
@@ -35,17 +35,21 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
     private route: ActivatedRoute,
     private router: Router,
     private socketService: SocketService
-  ) {}
+  ) {
+    this.roomId = this.route.snapshot.params["id"];
+  }
 
   ngOnInit(): void {
-    this.roomId = this.route.snapshot.params["id"];
     //Adiciona o Observable do socketService para receber atualizações da sala e se inscreve nele.
     this.subscription.add(
       this.socketService.room$.subscribe((room) => {
         this.room = room;
 
         if (room) {
-          this.updateRoomData();
+          this.updateLocalData();
+        }
+        else {
+          this.router.navigate(["/"]);
         }
       })
     );
@@ -127,7 +131,7 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
     return title.substring(0, maxLength - 3) + "...";
   }
 
-  private updateRoomData(): void {
+  private updateLocalData(): void {
     if (!this.room) return;
 
     this.voting = this.room.votingStatus.status === "voting";
@@ -172,15 +176,8 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
 
     // Converter objeto para array de strings
     const votesText = Object.entries(task.votes)
-      .map(([participantId, vote]) => {
-        // Buscar o nome do participante pelo ID
-        const participant = this.room?.participants.find(
-          (p) => p.id === participantId
-        );
-        const participantName =
-          participant?.name || `Participante ${participantId.slice(0, 6)}`;
-
-        return `${participantName}: ${vote}`
+      .map(([participantName, vote]) => {
+        return `${participantName}: ${vote}`;
       })
       .join("\n");
 
@@ -202,7 +199,7 @@ export class ModeratorRoomComponent implements OnInit, OnDestroy {
 
   removeRoom(): void {
     if (this.room && this.socketService.creatorId) {
-      this.removing = true; // Inicia o spinner
+      this.isRemovingRoom = true; // Inicia o spinner
       this.socketService.removeRoom({
         roomId: this.roomId,
         creatorId: this.socketService.creatorId,
